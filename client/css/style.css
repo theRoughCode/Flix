@@ -8,9 +8,24 @@ main {
   flex: 1 0 auto;
 }
 
+.flix-sidebar {
+  position: fixed;
+  height: 100%;
+  width: 360px;
+  z-index: 1;
+  background: black;
+  top: 0;
+  right: 0;
+  color: white;
+}
+
 #chat-messages {
   min-height: 10vh;
   height: 60vh;
   width: 100%;
   overflow-y: scroll;
+}
+
+#message-box {
+  color: white;
 }

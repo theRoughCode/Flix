@@ -20,5 +20,20 @@
   },
   "permissions": [
     "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.google.com/"],
+      "css": [
+        "./css/materialize.min.css",
+        "./css/style.css"
+      ],
+      "js": [
+        "./js/vue.js",
+        "./js/materialize.min.js",
+        "./js/jquery-3.3.1.min.js",
+        "./js/chat.js"
+      ]
+    }
   ]
 }
