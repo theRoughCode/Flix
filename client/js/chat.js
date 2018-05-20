@@ -4,29 +4,33 @@ const div = document.createElement('div');
 const viewport = document.querySelector('#viewport');
 viewport.appendChild(div);
 
-var chatMessage = "test";
-
-function onInput(e) {
-  chatMessage = e.target.value;
-}
-
-function onKeyUp(e) {
-  if (e.keyCode === 13) send()
-}
-
-function send() {
-  console.log(chatMessage);
-  chatMessage = "";
-  $("#message-box").val("");
-}
 
 new Vue({
   el: div,
+  data: {
+    ws: null, // Our websocket
+    newMsg: '', // Holds new messages to be sent to the server
+    chatContent: '', // A running list of chat messages displayed on the screen
+    email: null, // Email address used for grabbing an avatar
+    username: null, // Our username
+    joined: false // True if email and username have been filled in
+  },
+  methods: {
+    onInput: function(e) {
+      this.newMsg = e.target.value;
+    },
+    onKeyUp: function(e) {
+      if (e.keyCode === 13) this.send();
+    },
+    send: function() {
+      console.log(this.newMsg);
+      this.newMsg = "";
+    }
+  },
   render: function (h) {
     return h('div', {
       class: { 'flix-sidebar': true }
     }, [
-      h('p', 'Hello world'),
       // Chat box
       h('div', {
         class: { row: true }
@@ -63,9 +67,13 @@ new Vue({
             attrs: {
               id: 'message-box'
             },
+            domProps: {
+              value: this.newMsg,
+              placeholder: 'Enter message here'
+            },
             on: {
-              input: e => onInput(e),
-              keyup: e => onKeyUp(e)
+              input: e => this.onInput(e),
+              keyup: e => this.onKeyUp(e)
             }
           })
         ]),
@@ -84,7 +92,7 @@ new Vue({
               btn: true
             },
             on: {
-              click: () => send()
+              click: () => this.send()
             }
           }, 'Send')
         ])
