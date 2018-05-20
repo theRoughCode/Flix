@@ -5,11 +5,12 @@ const io = require('socket.io')(http);
 const PORT = process.env.PORT || 3000;
 
 app.get('/', function(req, res){
-  res.sendfile('index.html');
+  res.send('I love bacon');
 });
 
 io.on('connection', function(socket){
   console.log('user connected');
+  socket.emit('news', { hello: 'world' });
   socket.on('chat message', function(msg){
     io.emit('chat message', msg);
   });
