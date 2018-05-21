@@ -12,6 +12,7 @@ io.on('connection', function(socket){
   console.log('user connected');
   socket.emit('news', { hello: 'world' });
   socket.on('chat message', function(msg){
+    console.log(msg);
     io.emit('chat message', msg);
   });
   socket.on('disconnect', function(){

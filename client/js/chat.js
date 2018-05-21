@@ -8,12 +8,33 @@ viewport.appendChild(div);
 new Vue({
   el: div,
   data: {
-    ws: null, // Our websocket
+    socket: null, // Our websocket
     newMsg: '', // Holds new messages to be sent to the server
     chatContent: '', // A running list of chat messages displayed on the screen
     email: null, // Email address used for grabbing an avatar
-    username: null, // Our username
+    username: 'Jimmy', // Our username
     joined: false // True if email and username have been filled in
+  },
+  created: function() {
+    const self = this;
+
+    self.socket = io.connect('http://localhost:3000');
+    const socket = self.socket;
+    socket.on('news', function (data) {
+      console.log(data);
+      socket.emit('my other event', { my: 'data' });
+    });
+
+    // Receive incoming message
+    self.socket.on('chat message', function (data) {
+      const { msg, username } = data;
+
+      self.chatContent += '<div class="chip">'
+          + '<img src="' + self.gravatarURL(username) + '">' // Avatar
+          + username
+          + '</div>'
+          + msg + '<br/>'; // Parse emojis
+    });
   },
   methods: {
     onInput: function(e) {
@@ -24,10 +45,19 @@ new Vue({
     },
     send: function() {
       console.log(this.newMsg);
+      this.socket.emit('chat message', {
+        username: this.username,
+        msg: this.newMsg
+      });
       this.newMsg = "";
+    },
+    gravatarURL: function(username) {
+      return 'http://www.gravatar.com/avatar/' + username;
     }
   },
   render: function (h) {
+    const chatContent = this.chatContent;
+    
     return h('div', {
       class: { 'flix-sidebar': true }
     }, [
@@ -46,7 +76,7 @@ new Vue({
                 id: 'chat-messages'
               },
               class: { 'card-content': true },
-              domProps: { innerHTML: 'chatContent' }
+              domProps: { innerHTML: chatContent }
             })
           ])
         ])

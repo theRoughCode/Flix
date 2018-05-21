@@ -24,6 +24,10 @@ main {
   height: 60vh;
   width: 100%;
   overflow-y: scroll;
+  color: black;
+}
+
+.chip {
 }
 
 #message-box {
