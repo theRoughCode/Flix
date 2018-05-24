@@ -57,12 +57,15 @@ new Vue({
   },
   render: function (h) {
     const chatContent = this.chatContent;
-    
+
     return h('div', {
       class: { 'flix-sidebar': true }
     }, [
       // Chat box
       h('div', {
+        attrs: {
+          id: 'message-container'
+        },
         class: { row: true }
       }, [
         h('div', {
@@ -83,6 +86,9 @@ new Vue({
       ]),
       // Send box
       h('div', {
+        attrs: {
+          id: 'input-container'
+        },
         class: { row: true }
       }, [
         // Input box
@@ -90,7 +96,7 @@ new Vue({
           class: {
             'input-field': true,
             col: true,
-            s8: true
+            s9: true
           }
         }, [
           h('input', {
@@ -112,7 +118,7 @@ new Vue({
           class: {
             'input-field': true,
             col: true,
-            s4: true
+            s3: true
           }
         }, [
           h('button', {

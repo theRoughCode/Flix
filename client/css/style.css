@@ -4,10 +4,6 @@ body {
   flex-direction: column;
 }
 
-main {
-  flex: 1 0 auto;
-}
-
 .flix-sidebar {
   position: fixed;
   height: 100%;
@@ -17,17 +13,29 @@ main {
   top: 0;
   right: 0;
   color: white;
+  display: flex;
+  flex-flow: column;
+}
+
+#message-container {
+  flex: 1;
+  width: 100%;
 }
 
 #chat-messages {
   min-height: 10vh;
-  height: 60vh;
+  height: 85vh;
   width: 100%;
   overflow-y: scroll;
   color: black;
 }
 
-.chip {
+#input-container {
+  width: 100%;
+  padding-left: 10px;
+  padding-right: 10px;
+  margin-bottom: 20px;
+  min-height: 60px;
 }
 
 #message-box {
