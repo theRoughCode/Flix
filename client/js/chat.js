@@ -8,6 +8,7 @@ viewport.appendChild(div);
 new Vue({
   el: div,
   data: {
+    filepath: chrome.extension.getURL("img/emojione-assets/png/"),
     socket: null, // Our websocket
     newMsg: '', // Holds new messages to be sent to the server
     chatContent: '', // A running list of chat messages displayed on the screen
@@ -20,11 +21,6 @@ new Vue({
 
     self.socket = io.connect('http://localhost:3000');
     const socket = self.socket;
-    socket.on('news', function (data) {
-      console.log(data);
-      socket.emit('my other event', { my: 'data' });
-    });
-
     // Receive incoming message
     self.socket.on('chat message', function (data) {
       const { msg, username } = data;
@@ -33,7 +29,7 @@ new Vue({
           + '<img src="' + self.gravatarURL(username) + '">' // Avatar
           + username
           + '</div>'
-          + msg + '<br/>'; // Parse emojis
+          + emojione.toImage(msg, self.filepath) + '<br/>'; // Parse emojis
     });
   },
   methods: {

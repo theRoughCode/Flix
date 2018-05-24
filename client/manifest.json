@@ -32,9 +32,13 @@
         "./js/socket.io.js",
         "./js/vue.js",
         "./js/materialize.min.js",
+        "./js/emojione.min.js",
         "./js/jquery-3.3.1.min.js",
         "./js/chat.js"
       ]
     }
+  ],
+  "web_accessible_resources": [
+    "img/*.png"
   ]
 }
