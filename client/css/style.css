@@ -7,7 +7,7 @@
   height: 100%;
   width: 360px;
   z-index: 1;
-  background: black;
+  background: rgba(0, 0, 0, 0.87);
   top: 0;
   right: 0;
   color: white;
@@ -28,8 +28,9 @@
   min-height: 10vh;
   height: 85vh;
   width: 100%;
-  overflow-y: scroll;
-  color: '#141414';
+  overflow-y: auto;
+  color: white;
+  background: rgba(0, 0, 0, 0.87);
 }
 
 #input-container button {
@@ -46,4 +47,19 @@
 
 #message-box {
   color: white;
+}
+
+.avatar {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.avatar-img {
+  width: 100% !important;
+}
+
+.message {
+  margin-bottom: 0;
+  word-wrap: break-word;
+  padding: 18px !important;
 }

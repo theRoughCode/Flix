@@ -1,3 +1,18 @@
+function hashString(str) {
+  var hash = 0, i, chr;
+  if (str.length === 0) return hash;
+  for (i = 0; i < str.length; i++) {
+    chr   = str.charCodeAt(i);
+    hash  = ((hash << 5) - hash) + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+};
+
+function getGravatarURL(username) {
+  return `http://www.gravatar.com/avatar/${hashString(username)}?d=robohash`;
+}
+
 function createChat() {
   const div = document.createElement('div');
   const app = document.querySelector('.sizing-wrapper');
@@ -13,7 +28,7 @@ function createChat() {
       chatContent: '', // A running list of chat messages displayed on the screen
       email: null, // Email address used for grabbing an avatar
       username: 'Jimmy', // Our username
-      joined: false // True if email and username have been filled in
+      joined: false, // True if email and username have been filled in
     },
     created: function() {
       const self = this;
@@ -24,11 +39,7 @@ function createChat() {
       self.socket.on('chat message', function (data) {
         const { msg, username } = data;
 
-        self.chatContent += '<div class="chip">'
-            + '<img src="' + self.gravatarURL(username) + '">' // Avatar
-            + username
-            + '</div>'
-            + emojione.toImage(msg, self.filepath) + '<br/>'; // Parse emojis
+        self.chatContent += self.formatMessage(username, msg);
       });
     },
     methods: {
@@ -39,15 +50,33 @@ function createChat() {
         if (e.keyCode === 13) this.send();
       },
       send: function() {
-        if (this.newMsg.length === 0) return;
+        if (!/\S/.test(this.newMsg)) return;
         this.socket.emit('chat message', {
           username: this.username,
           msg: this.newMsg
         });
         this.newMsg = "";
       },
-      gravatarURL: function(username) {
-        return 'http://www.gravatar.com/avatar/' + username;
+      formatMessage: function(username, msg) {
+        const colour = (username === this.username) ? "teal lighten-2" : "blue-grey darken-3";
+        return `
+          <div class="row valign-wrapper">
+            <div class="col s2 avatar">
+              <img
+                src="${getGravatarURL(username)}"
+                title="${username}"
+                class="circle reponsive-img avatar-img"
+              >
+            </div>
+            <div class="col s10">
+              <div class="card-panel ${colour} lighten-5 z-depth-1 message">
+                <span>
+                  ${msg}
+                </span>
+              </div>
+            </div>
+          </div>
+        `;
       }
     },
     render: function (h) {
