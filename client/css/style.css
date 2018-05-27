@@ -1,7 +1,5 @@
-body {
-  display: flex;
-  min-height: 100vh;
-  flex-direction: column;
+.sizing-wrapper.chat-active {
+  width: calc(100% - 360px) !important;
 }
 
 .flix-sidebar {
@@ -13,8 +11,12 @@ body {
   top: 0;
   right: 0;
   color: white;
-  display: flex;
+  display: none;
   flex-flow: column;
+}
+
+.flix-sidebar.chat-active {
+  display: flex;
 }
 
 #message-container {
@@ -27,7 +29,11 @@ body {
   height: 85vh;
   width: 100%;
   overflow-y: scroll;
-  color: black;
+  color: '#141414';
+}
+
+#input-container button {
+  padding: 0;
 }
 
 #input-container {
