@@ -9,17 +9,34 @@ app.get('/', function(req, res){
 });
 
 io.on('connection', function(socket){
-  console.log('user connected');
-  socket.emit('news', { hello: 'world' });
-  socket.on('chat message', function(msg){
-    console.log(msg);
-    io.emit('chat message', msg);
+  let username, gravatar;
+
+  socket.on('join', function({ name, gravatarURL }) {
+    username = name;
+    gravatar = gravatarURL;
+    sendStatus(`${name} joined the room!`);
+  });
+
+  // data = { username, gravatar, msg }
+  socket.on('chat message', function(data){
+    io.emit('chat message', data);
   });
   socket.on('disconnect', function(){
-    console.log('user disconnected');
+    console.log(`${username} disconnected.`);
+  });
+  socket.on('play', function() {
+    sendStatus(`Video played by ${username}.`);
+  });
+  socket.on('pause', function() {
+    sendStatus(`Video paused by ${username}.`);
   });
 });
 
 http.listen(PORT, function(){
   console.log(`Listening on port ${PORT}`);
 });
+
+// msg = { status }
+function sendStatus(status) {
+  io.emit('status', { status });
+}

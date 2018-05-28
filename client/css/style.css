@@ -63,3 +63,7 @@
   word-wrap: break-word;
   padding: 18px !important;
 }
+
+.status {
+  padding: 2px;
+}

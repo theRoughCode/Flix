@@ -27,20 +27,35 @@ function createChat() {
       newMsg: '', // Holds new messages to be sent to the server
       chatContent: '', // A running list of chat messages displayed on the screen
       email: null, // Email address used for grabbing an avatar
-      username: 'Jimmy', // Our username
+      username: 'Jimmy', // Our username,
+      gravatar: '', // Gravatar URL
       joined: false, // True if email and username have been filled in
     },
     created: function() {
       const self = this;
 
       self.socket = io.connect('http://localhost:3000');
+      self.gravatar = getGravatarURL(self.username);
       const socket = self.socket;
-      // Receive incoming message
-      self.socket.on('chat message', function (data) {
-        const { msg, username } = data;
 
-        self.chatContent += self.formatMessage(username, msg);
+      // Join session
+      socket.emit('join', { name: self.username, gravatarURL: self.gravatar });
+
+      // Receive incoming message
+      socket.on('chat message', function (data) {
+        const { msg, username, gravatar } = data;
+        self.chatContent += self.formatMessage(username, gravatar, msg);
       });
+
+      // Receive incoming statuses
+      socket.on('status', function({ status }) {
+        self.chatContent += `
+          <p class="status">${status}</p>
+        `;
+      });
+
+      // Add button listeners to control panel
+      addButtonListeners(socket);
     },
     methods: {
       onInput: function(e) {
@@ -53,17 +68,18 @@ function createChat() {
         if (!/\S/.test(this.newMsg)) return;
         this.socket.emit('chat message', {
           username: this.username,
+          gravatar: this.gravatar,
           msg: this.newMsg
         });
         this.newMsg = "";
       },
-      formatMessage: function(username, msg) {
-        const colour = (username === this.username) ? "teal lighten-2" : "blue-grey darken-3";
+      formatMessage: function(username, gravatar, msg) {
+        const colour = (username === this.username) ? "teal lighten-1" : "blue-grey darken-3";
         return `
           <div class="row valign-wrapper">
             <div class="col s2 avatar">
               <img
-                src="${getGravatarURL(username)}"
+                src="${gravatar}"
                 title="${username}"
                 class="circle reponsive-img avatar-img"
               >
@@ -173,6 +189,29 @@ function toggleChat() {
   }
   $('.sizing-wrapper').toggleClass('chat-active');
   $('.flix-sidebar').toggleClass('chat-active');
+}
+
+function buttonHandler(e, socket) {
+  const ariaLabel = e.target.getAttribute('aria-label');
+  switch (ariaLabel.toLowerCase()) {
+    case 'play':
+      socket.emit('play');
+      break;
+    case 'pause':
+      socket.emit('pause');
+      break;
+    default:
+      console.log(`Invalid aria label: ${ariaLabel}`);
+      return;
+  }
+}
+
+function addButtonListeners(socket, username, gravatar) {
+  const buttons = document.querySelector('.PlayerControls--button-control-row').querySelectorAll('button');
+  const ppButton = buttons[0];
+
+  ppButton.addEventListener('click', e => buttonHandler(e, socket));
+
 }
 
 chrome.runtime.onMessage.addListener(
