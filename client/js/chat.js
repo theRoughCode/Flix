@@ -54,6 +54,9 @@ function createChat() {
         `;
       });
 
+      // Handle incoming controls
+      socket.on('command', commandHandler);
+
       // Add button listeners to control panel
       addButtonListeners(socket);
     },
@@ -191,14 +194,22 @@ function toggleChat() {
   $('.flix-sidebar').toggleClass('chat-active');
 }
 
-function buttonHandler(e, socket) {
-  const ariaLabel = e.target.getAttribute('aria-label');
-  switch (ariaLabel.toLowerCase()) {
+// Handles user's controls and broadcasts them to the room
+function buttonHandler(type, socket) {
+  const seeker = document.querySelector('.scrubber-head');
+  const currTimestamp = seeker.getAttribute('aria-valuetext').split(' ')[0];
+  switch (type.toLowerCase()) {
     case 'play':
       socket.emit('play');
       break;
     case 'pause':
-      socket.emit('pause');
+      socket.emit('pause', { time: currTimestamp });
+      break;
+    case 'seek':
+      const seekValue = seeker.getAttribute('aria-valuenow');
+      const seekMax = seeker.getAttribute('aria-valuemax');
+      const factor = seekValue / seekMax;
+      socket.emit('seek', { time: currTimestamp, factor });
       break;
     default:
       console.log(`Invalid aria label: ${ariaLabel}`);
@@ -206,11 +217,59 @@ function buttonHandler(e, socket) {
   }
 }
 
+// Receives incoming controls from room broadcasts
+function commandHandler(data) {
+  const { command } = data;
+  switch (command) {
+    case 'play':
+    case 'pause':
+      const btn = document.querySelector('.PlayerControls--button-control-row').querySelector('button');
+      if (command !== btn.getAttribute('aria-label').toLowerCase()) {
+        console.log(`${command} button clicked.`);
+        // btn.click();
+      } else console.log('failed', command)
+      break;
+    case 'seek':
+      const { factor } = data;
+      const track = document.querySelector('.scrubber-bar');
+      const offsetX = Math.round(track.offsetWidth * factor);
+      const offsetY = Math.round(track.offsetHeight / 2);
+      const pageX = track.offsetLeft + offsetX;
+      const pageY = track.offsetTop + offsetY;
+      const screenX = pageX - window.scrollX;
+      const screenY = pageY - window.scrollY;
+      const options = {
+        screenX,
+        screenY,
+        clientX: screenX,
+        clientY: screenY,
+        offsetX,
+        offsetY,
+        pageX,
+        pageY,
+        currentTarget: track,
+        bubbles: true,
+        button: 0
+      };
+      console.log(options)
+      const clickEvent = new MouseEvent('click', options);
+      const mouseUpEvent = new MouseEvent('mouseUp', options);
+      const mouseDownEvent = new MouseEvent('mouseDown', options);
+      console.log(`Receiving seek event.`, mouseEvent);
+      // track.dispatchEvent(new MouseEvent('click', mouseEvent));
+    default:
+      console.log(`Invalid command: ${command}`);
+      return;
+  }
+}
+
 function addButtonListeners(socket, username, gravatar) {
   const buttons = document.querySelector('.PlayerControls--button-control-row').querySelectorAll('button');
   const ppButton = buttons[0];
+  const track = document.querySelector('.scrubber-bar');
 
-  ppButton.addEventListener('click', e => buttonHandler(e, socket));
+  ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label'), socket));
+  track.addEventListener('click', () => buttonHandler('seek', socket))
 
 }
 

@@ -25,10 +25,16 @@ io.on('connection', function(socket){
     console.log(`${username} disconnected.`);
   });
   socket.on('play', function() {
+    io.emit('command', { command: 'play' });
     sendStatus(`Video played by ${username}.`);
   });
-  socket.on('pause', function() {
-    sendStatus(`Video paused by ${username}.`);
+  socket.on('pause', function({ time }) {
+    io.emit('command', { command: 'pause' });
+    sendStatus(`Video paused by ${username} at ${time}.`);
+  });
+  socket.on('seek', function({ time, factor }) {
+    io.emit('command', { command: 'seek', factor });
+    sendStatus(`Video seeked to ${time}.`);
   });
 });
 
