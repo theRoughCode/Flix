@@ -175,8 +175,6 @@ function createChat() {
           }, [
             h('button', {
               class: {
-                'waves-effect': true,
-                'waves-light': true,
                 btn: true
               },
               on: {
@@ -191,13 +189,10 @@ function createChat() {
 }
 
 function toggleChat() {
-  const chat = document.querySelector('.flix-sidebar');
-  if (chat == null) {
-    console.error('Chat not created yet');
-    return;
-  }
-  $('.sizing-wrapper').toggleClass('chat-active');
-  $('.flix-sidebar').toggleClass('chat-active');
+  waitTillVisible('.flix-sidebar', 10000).then(() => {
+    $('.sizing-wrapper').toggleClass('chat-active');
+    $('.flix-sidebar').toggleClass('chat-active');
+  }, () => console.log('Could not create chat in time.'));
 }
 
 // Handles user's controls and broadcasts them to the room
@@ -246,14 +241,17 @@ function commandHandler(data) {
   }
 }
 
+// Add event listeners to control panel
 function addButtonListeners(socket, username, gravatar) {
-  const buttons = document.querySelector('.PlayerControls--button-control-row').querySelectorAll('button');
-  const ppButton = buttons[0];
-  const track = document.querySelector('.scrubber-bar');
+  waitTillVisible('.PlayerControls--button-control-row', 100000).then(() => {
+    const btnControl = document.querySelector('.PlayerControls--button-control-row');
+    const buttons = btnControl.querySelectorAll('button');
+    const ppButton = buttons[0];
+    const track = document.querySelector('.scrubber-bar');
 
-  // ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label'), socket));
-  // track.addEventListener('click', () => buttonHandler('seek', socket))
-
+    ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label'), socket));
+    track.addEventListener('click', () => buttonHandler('seek', socket));
+  }, () => console.log('Could not get buttons on time'));
 }
 
 
@@ -261,17 +259,16 @@ function addButtonListeners(socket, username, gravatar) {
 
 // Keeps checking to see if element is visible and returns when the element is
 // visible or time runs out
-function waitTillVisible(elem) {
-  const maxWait = 1000;
-  const delay = 100;
+function waitTillVisible(className, maxWait = 1000, delay = 100) {
   const startTime = Date.now();
-  let prevTime = startTime;
 
-  while (Date.now() - startTime < maxWait) {
-    if (Date.now() - prevTime < delay && $(elem).is(':visible')) return Promise.resolve();
-  }
-
-  return Promise.reject();
+  return new Promise((resolve, reject) => {
+    setInterval(() => {
+      const elem = document.querySelector(className);
+      if (elem != null || $(elem).is(':visible')) return resolve();
+      else if (Date.now() - startTime >= maxWait) return reject();
+    }, delay);
+  });
 }
 
 // Move mouse to show bottom controls
@@ -281,7 +278,7 @@ function showControls() {
     bubbles: true,
     currentTarget: bottomControls
   }));
-  return waitTillVisible(bottomControls);
+  return waitTillVisible('.PlayerControls--bottom-controls.nfp-control-row.bottom-controls');
 }
 
 // Move mouse to show scrubber
@@ -291,7 +288,7 @@ function showScrubber() {
     bubbles: true,
     currentTarget: scrubber
   }));
-  return waitTillVisible(scrubber);
+  return waitTillVisible('.scrubber-bar');
 }
 
 // Click on scrubber to seek

@@ -33,10 +33,6 @@
   background: rgba(0, 0, 0, 0.87);
 }
 
-#input-container button {
-  padding: 0;
-}
-
 #input-container {
   width: 100%;
   padding-left: 10px;
@@ -66,4 +62,12 @@
 
 .status {
   padding: 2px;
+}
+
+button:focus {
+  background-color: initial;
+}
+
+.btn:active {
+  transform: translateY(2px);
 }
