@@ -3,11 +3,126 @@
   <head>
     <meta charset="utf-8">
     <title>Flix</title>
-    <script src="https://cdn.jsdelivr.net/emojione/2.2.6/lib/js/emojione.min.js"></script>
     <script src="popup.js"></script>
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <style media="screen">
+      body {
+        min-width: 300px;
+      }
+      .choose-container {
+        height: 100px;
+        display: flex;
+        margin-bottom: 30px;
+      }
+      .choose {
+        margin: auto;
+        display: flex;
+      }
+      .choose-option {
+        margin: 10px;
+        width: 80px;
+        height: 80px;
+        display: flex;
+        flex-direction: column;
+        background-color: #c2cad6;
+        padding: 8px;
+        border-radius: 5px;
+        border: 1px solid #5c6066;
+        user-select: none;
+        transition: background-color 0.4s ease-out;
+      }
+      .choose-option:hover {
+        background-color: #d5ddea;
+        cursor: pointer;
+        transition: background-color 0.4s ease-out;
+      }
+      .choose-option:active {
+        background-color: #a9b0ba;
+        transition: background-color 0.2s ease-out;
+      }
+      .choose-img, .choose-option span {
+        margin: auto;
+      }
+      .choose-or {
+        font-size: 20px;
+        margin: 5px;
+        display: flex;
+      }
+      .choose-or span {
+        margin: auto;
+      }
+      .form-container, #form-create, #form-join {
+        display: none;
+      }
+      input[type=text], select {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0;
+        display: inline-block;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      .submit-btn {
+        width: 100%;
+        background-color: rgb(43, 187, 173);
+        color: white;
+        padding: 14px 20px;
+        margin: 8px 0;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .submit-btn:hover {
+        background-color: rgb(38, 166, 154);
+      }
+    </style>
   </head>
   <body>
-    <h1>GTmetrix Analyzer</h1>
-    <button id="checkPage">Check this page now!</button>
+    <div class="header">
+
+    </div>
+    <div class="choose-container">
+      <div class="choose">
+        <div class="choose-option" id="create">
+          <div class="choose-img">
+            <img src="./img/account-plus.png" draggable="false">
+          </div>
+          <span>Create a room</span>
+        </div>
+        <div class="choose-or">
+          <span>- or -</span>
+        </div>
+        <div class="choose-option" id="join">
+          <div class="choose-img">
+            <img src="./img/account-group.png" draggable="false">
+          </div>
+          <span>Join a room</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-container">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" placeholder="Enter username...">
+
+      <div id="form-create">
+        <label for="icons">Icon Theme</label>
+        <select id="icons" name="icons">
+          <option value="identicon">Geometric Pattern</option>
+          <option value="monsterid">Monster</option>
+          <option value="wavatar">Faces</option>
+          <option value="retro">8-bit</option>
+          <option value="robohash">Robots</option>
+        </select>
+        <button class="submit-btn" id="submit-create">Create Room</button>
+      </div>
+
+      <div id="form-join">
+        <label for="room">Room Number</label>
+        <input type="text" id="room" name="room" placeholder="Enter room number...">
+        <button class="submit-btn" id="submit-join">Join Room</button>
+      </div>
+    </div>
+    <!-- <button id="checkPage">Check this page now!</button> -->
   </body>
 </html>
