@@ -5,6 +5,7 @@
     <title>Flix</title>
     <script src="popup.js"></script>
     <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/socket.io.js"></script>
     <style media="screen">
       body {
         min-width: 300px;
@@ -54,7 +55,7 @@
       .form-container, #form-create, #form-join {
         display: none;
       }
-      input[type=text], select {
+      .form-container input[type=text], select {
         width: 100%;
         padding: 12px;
         margin: 8px 0;
@@ -73,8 +74,69 @@
         border-radius: 4px;
         cursor: pointer;
       }
-      .submit-btn:hover {
+      .submit-btn, #copy-room-id {
+        transition: background-color 0.4s ease-out;
+      }
+      .submit-btn:hover, #copy-room-id:hover {
         background-color: rgb(38, 166, 154);
+        transition: background-color 0.4s ease-out;
+      }
+      .submit-btn:active, #copy-room-id:active {
+        background-color: #25c6b7;
+        transition: background-color 0.2s ease-out;
+      }
+      .room-form {
+        display: none;
+        flex-direction: column;
+      }
+      .room-form span {
+        font-size: 15px;
+      }
+      .room-id-container {
+        margin: auto;
+        margin-top: 10px;
+        width: 100%;
+        height: 40px;
+        display: flex;
+      }
+      #room-id {
+        border: 1px solid black;
+        border-top-left-radius: 5px;
+        border-bottom-left-radius: 5px;
+        width: 75%;
+        height: 100%;
+        display: flex;
+        margin-right: 0;
+      }
+      #room-id-text {
+        border: none;
+        width: 100%;
+        height: 90%;
+        border-top-left-radius: 5px;
+        border-bottom-left-radius: 5px;
+        font-size: 17px;
+        margin: auto;
+        text-align: center;
+        margin-left: 4px;
+        margin-right: 4px;
+        overflow: scroll;
+      }
+      #copy-room-id {
+        border: 1px solid black;
+        border-left: none;
+        border-top-right-radius: 5px;
+        border-bottom-right-radius: 5px;
+        width: 24%;
+        height: 100%;
+        margin-left: 0;
+        font-size: 15px;
+        background-color: rgb(43, 187, 173);
+        cursor: pointer;
+        color: white;
+      }
+      #copy-room-id {
+        text-align: center;
+        line-height: 40px;
       }
     </style>
   </head>
@@ -121,6 +183,18 @@
         <label for="room">Room Number</label>
         <input type="text" id="room" name="room" placeholder="Enter room number...">
         <button class="submit-btn" id="submit-join">Join Room</button>
+      </div>
+    </div>
+    <div class="room-form">
+      <h2>Your room has been created!</h2>
+      <span>Invite your friends to your Flix room with the code below!</span>
+      <div class="room-id-container">
+        <div id="room-id">
+          <input type="text" value="123" id="room-id-text" readonly>
+        </div>
+        <div id="copy-room-id">
+          Copy
+        </div>
       </div>
     </div>
     <!-- <button id="checkPage">Check this page now!</button> -->

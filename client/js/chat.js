@@ -321,9 +321,12 @@ function seek(factor) {
   track.dispatchEvent(mouseOutEvent);
 }
 
+// Listen to incoming messages from popup.html
 chrome.runtime.onMessage.addListener(
   function(request, sender, sendResponse) {
-    if (request.command === "join") {
+    if (request.command === 'create') {
+      const  { username, iconTheme } = request;
+    } else if (request.command === "join") {
       sendResponse({response: "joined chat"});
       createChat();
     } else if (request.command === "toggleChat") {

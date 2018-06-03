@@ -4,6 +4,18 @@ function sendCommand(command, callback) {
   });
 }
 
+function createSession(socket, username, iconTheme) {
+  const data = {
+    command: 'create',
+    socket,
+    username,
+    iconTheme
+  };
+  chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+    chrome.tabs.sendMessage(tabs[0].id, data);
+  });
+}
+
 function joinSession() {
   sendCommand('join', res => console.log(res));
 }
@@ -14,7 +26,13 @@ function toggleChat() {
 
 
 document.addEventListener('DOMContentLoaded', function() {
-  joinSession();
+  const socket = io.connect('http://localhost:3000');
+  let roomId = -1;
+  socket.on('room id', ({ id }) => {
+    roomId = id;
+    $("#room-id-text").val(id);
+  });
+  // joinSession();
 
   // const checkPageButton = document.getElementById('checkPage');
   // checkPageButton.addEventListener('click', function() {
@@ -39,8 +57,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const username = $("#username").val();
     if (!username) return;
     const iconTheme = $("#icons").val();
-    console.log(username);
-    console.log(iconTheme);
+    createSession(socket, username, iconTheme);
+    $('.choose-container').hide();
+    $('.form-container').hide();
+    $('.room-form').show(100);
   });
   joinRoomSubmitBtn.addEventListener('click', function() {
     const username = $("#username").val();
@@ -49,6 +69,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!room) return;
     console.log(username);
     console.log(room);
+  });
+
+  const copyRoomIdBtn = document.querySelector('#copy-room-id');
+  const roomIdText = document.querySelector('#room-id-text');
+  copyRoomIdBtn.addEventListener('click', function() {
+    roomIdText.select();
+    document.execCommand("copy");
+    copyRoomIdBtn.innerHTML = "Copied!";
   });
 
 }, false);
