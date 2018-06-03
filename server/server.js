@@ -19,21 +19,22 @@ io.on('connection', function(socket){
 
   // data = { username, gravatar, msg }
   socket.on('chat message', function(data){
-    io.emit('chat message', data);
+    socket.broadcast.emit('chat message', data);
+    socket.emit('user message', data);
   });
   socket.on('disconnect', function(){
     console.log(`${username} disconnected.`);
   });
   socket.on('play', function() {
-    io.emit('command', { command: 'play' });
+    socket.broadcast.emit('command', { command: 'play' });
     sendStatus(`Video played by ${username}.`);
   });
   socket.on('pause', function({ time }) {
-    io.emit('command', { command: 'pause' });
+    socket.broadcast.emit('command', { command: 'pause' });
     sendStatus(`Video paused by ${username} at ${time}.`);
   });
   socket.on('seek', function({ time, factor }) {
-    io.emit('command', { command: 'seek', factor });
+    socket.broadcast.emit('command', { command: 'seek', factor });
     sendStatus(`Video seeked to ${time}.`);
   });
 });

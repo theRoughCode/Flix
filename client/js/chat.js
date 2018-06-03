@@ -47,6 +47,12 @@ function createChat() {
         self.chatContent += self.formatMessage(username, gravatar, msg);
       });
 
+      // Receiver own message
+      socket.on('user message', function(data) {
+        const { msg, username, gravatar } = data;
+        self.chatContent += self.formatMessage(username, gravatar, msg, true);
+      });
+
       // Receive incoming statuses
       socket.on('status', function({ status }) {
         self.chatContent += `
@@ -76,8 +82,8 @@ function createChat() {
         });
         this.newMsg = "";
       },
-      formatMessage: function(username, gravatar, msg) {
-        const colour = (username === this.username) ? "teal lighten-1" : "blue-grey darken-3";
+      formatMessage: function(username, gravatar, msg, isSelf = false) {
+        const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
         return `
           <div class="row valign-wrapper">
             <div class="col s2 avatar">
@@ -195,7 +201,7 @@ function toggleChat() {
 }
 
 // Handles user's controls and broadcasts them to the room
-function buttonHandler(type, socket) {
+function buttonHandler(type, socket, factor) {
   const seeker = document.querySelector('.scrubber-head');
   const currTimestamp = seeker.getAttribute('aria-valuetext').split(' ')[0];
   switch (type.toLowerCase()) {
@@ -224,39 +230,16 @@ function commandHandler(data) {
     case 'play':
     case 'pause':
       const btn = document.querySelector('.PlayerControls--button-control-row').querySelector('button');
-      if (command !== btn.getAttribute('aria-label').toLowerCase()) {
-        console.log(`${command} button clicked.`);
-        // btn.click();
+      if (command === btn.getAttribute('aria-label').toLowerCase()) {
+        btn.click();
       } else console.log('failed', command)
       break;
     case 'seek':
       const { factor } = data;
-      const track = document.querySelector('.scrubber-bar');
-      const offsetX = Math.round(track.offsetWidth * factor);
-      const offsetY = Math.round(track.offsetHeight / 2);
-      const pageX = track.offsetLeft + offsetX;
-      const pageY = track.offsetTop + offsetY;
-      const screenX = pageX - window.scrollX;
-      const screenY = pageY - window.scrollY;
-      const options = {
-        screenX,
-        screenY,
-        clientX: screenX,
-        clientY: screenY,
-        offsetX,
-        offsetY,
-        pageX,
-        pageY,
-        currentTarget: track,
-        bubbles: true,
-        button: 0
-      };
-      console.log(options)
-      const clickEvent = new MouseEvent('click', options);
-      const mouseUpEvent = new MouseEvent('mouseUp', options);
-      const mouseDownEvent = new MouseEvent('mouseDown', options);
-      console.log(`Receiving seek event.`, mouseEvent);
-      // track.dispatchEvent(new MouseEvent('click', mouseEvent));
+      showControls()
+        .then(showScrubber)
+        .then(() => seek(factor));
+      break;
     default:
       console.log(`Invalid command: ${command}`);
       return;
@@ -268,9 +251,77 @@ function addButtonListeners(socket, username, gravatar) {
   const ppButton = buttons[0];
   const track = document.querySelector('.scrubber-bar');
 
-  ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label'), socket));
-  track.addEventListener('click', () => buttonHandler('seek', socket))
+  // ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label'), socket));
+  // track.addEventListener('click', () => buttonHandler('seek', socket))
 
+}
+
+
+// Seeker Helper Functions
+
+// Keeps checking to see if element is visible and returns when the element is
+// visible or time runs out
+function waitTillVisible(elem) {
+  const maxWait = 1000;
+  const delay = 100;
+  const startTime = Date.now();
+  let prevTime = startTime;
+
+  while (Date.now() - startTime < maxWait) {
+    if (Date.now() - prevTime < delay && $(elem).is(':visible')) return Promise.resolve();
+  }
+
+  return Promise.reject();
+}
+
+// Move mouse to show bottom controls
+function showControls() {
+  const bottomControls = document.querySelector('.PlayerControls--bottom-controls.nfp-control-row.bottom-controls');
+  bottomControls.dispatchEvent(new MouseEvent('mousemove', {
+    bubbles: true,
+    currentTarget: bottomControls
+  }));
+  return waitTillVisible(bottomControls);
+}
+
+// Move mouse to show scrubber
+function showScrubber() {
+  const scrubber = document.querySelector('.scrubber-bar');
+  scrubber.dispatchEvent(new MouseEvent('mousemove', {
+    bubbles: true,
+    currentTarget: scrubber
+  }));
+  return waitTillVisible(scrubber);
+}
+
+// Click on scrubber to seek
+function seek(factor) {
+  const track = document.querySelector('.scrubber-bar');
+  const offsetX = Math.round(track.offsetWidth * factor);
+  const offsetY = Math.round(track.offsetHeight / 2);
+  const pageX = track.offsetLeft + offsetX;
+  const pageY = track.offsetTop + offsetY;
+  const screenX = pageX - window.scrollX;
+  const screenY = pageY - window.scrollY;
+  const options = {
+    screenX,
+    screenY,
+    clientX: screenX,
+    clientY: screenY,
+    offsetX,
+    offsetY,
+    pageX,
+    pageY,
+    currentTarget: track,
+    bubbles: true,
+    button: 0
+  };
+  const mouseDownEvent = new MouseEvent('mousedown', options);
+  const mouseUpEvent = new MouseEvent('mouseup', options);
+  const mouseOutEvent = new MouseEvent('mouseout', options);
+  track.dispatchEvent(mouseDownEvent);
+  track.dispatchEvent(mouseUpEvent);
+  track.dispatchEvent(mouseOutEvent);
 }
 
 chrome.runtime.onMessage.addListener(
