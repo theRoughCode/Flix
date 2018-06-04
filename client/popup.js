@@ -4,13 +4,13 @@ function sendCommand(command, callback) {
   });
 }
 
-function createSession(socket, username, iconTheme) {
+function createSession(socket, roomId, username, iconTheme) {
   const data = {
     command: 'create',
     socket,
-    username,
-    iconTheme
+    username
   };
+  socket.emit('create', { id: roomId, owner: username, theme: iconTheme });
   chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
     chrome.tabs.sendMessage(tabs[0].id, data);
   });
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const username = $("#username").val();
     if (!username) return;
     const iconTheme = $("#icons").val();
-    createSession(socket, username, iconTheme);
+    createSession(socket, roomId, username, iconTheme);
     $('.choose-container').hide();
     $('.form-container').hide();
     $('.room-form').show(100);

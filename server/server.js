@@ -1,9 +1,10 @@
 const app = require('express')();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const niceware = require('niceware');
 
 const PORT = process.env.PORT || 3000;
+
+const rooms = {};
 
 app.get('/', function(req, res){
   res.send('I love bacon');
@@ -13,6 +14,11 @@ io.on('connection', function(socket){
   let username, gravatar;
 
   socket.emit('room id', { id: socket.id });
+
+  // Add room to room list
+  socket.on('create', function({ id, owner, theme }) {
+    rooms[id] = { owner, theme };
+  });
 
   socket.on('join', function({ name, gravatarURL }) {
     username = name;

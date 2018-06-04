@@ -13,28 +13,25 @@ function getGravatarURL(username) {
   return `http://www.gravatar.com/avatar/${hashString(username)}?d=robohash`;
 }
 
-function createChat() {
+function createChat(username, socket) {
   const div = document.createElement('div');
   const app = document.querySelector('.sizing-wrapper');
   app.parentNode.insertBefore(div, app.nextSibling);
-
 
   new Vue({
     el: div,
     data: {
       filepath: chrome.extension.getURL("img/emojione-assets/png/"),
-      socket: null, // Our websocket
+      socket, // Our websocket
       newMsg: '', // Holds new messages to be sent to the server
       chatContent: '', // A running list of chat messages displayed on the screen
       email: null, // Email address used for grabbing an avatar
-      username: 'Jimmy', // Our username,
+      username, // Our username,
       gravatar: '', // Gravatar URL
       joined: false, // True if email and username have been filled in
     },
     created: function() {
       const self = this;
-
-      self.socket = io.connect('http://localhost:3000');
       self.gravatar = getGravatarURL(self.username);
       const socket = self.socket;
 
@@ -325,7 +322,8 @@ function seek(factor) {
 chrome.runtime.onMessage.addListener(
   function(request, sender, sendResponse) {
     if (request.command === 'create') {
-      const  { username, iconTheme } = request;
+      const  { username, socket } = request;
+      createChat(username, socket);
     } else if (request.command === "join") {
       sendResponse({response: "joined chat"});
       createChat();
