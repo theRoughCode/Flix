@@ -78,7 +78,7 @@ function createChat(username, roomId) {
             <div class="col s10">
               <div class="card-panel ${colour} lighten-5 z-depth-1 message">
                 <span>
-                  ${msg}
+                  ${emojione.toImage(msg, this.filepath)}
                 </span>
               </div>
             </div>
