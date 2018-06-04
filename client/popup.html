@@ -68,6 +68,10 @@
         border-radius: 4px;
         box-sizing: border-box;
       }
+      #invalid-room {
+        display: none;
+        color: #f44242;
+      }
       .submit-btn {
         width: 100%;
         background-color: rgb(43, 187, 173);
@@ -93,10 +97,13 @@
         display: none;
         flex-direction: column;
         margin: 5px;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
       }
       .room-form span {
         font-size: 15px;
+      }
+      .post-create-view, .post-join-view {
+        display: none;
       }
       .room-id-container {
         margin: auto;
@@ -144,6 +151,7 @@
         text-align: center;
         line-height: 40px;
       }
+
 
       .header {
         width: 100%;
@@ -215,6 +223,10 @@
         border-radius: 50%;
       }
 
+      #leave-room {
+        margin-top: 15px;
+        margin-bottom: 10px;
+      }
       .invalid-page {
         display: none;
         margin: 10px;
@@ -264,6 +276,7 @@
       <div id="form-join">
         <label for="room">Room Number</label>
         <input type="text" id="room" name="room" placeholder="Enter room number...">
+        <span id="invalid-room">Couldn't find room id!</span>
         <button class="submit-btn" id="submit-join">Join Room</button>
       </div>
     </div>
@@ -272,20 +285,27 @@
         <div class="toggle-container">
           <span>Toggle chat</span>
           <label class="switch">
-            <input type="checkbox">
+            <input type="checkbox" id="toggle-chat">
             <span class="slider round"></span>
           </label>
         </div>
       </div>
-      <h2>Your room has been created!</h2>
-      <span>Invite your friends to your Flix room with the code below!</span>
-      <div class="room-id-container">
-        <div id="room-id">
-          <input type="text" value="123" id="room-id-text" readonly>
+      <div class="post-create-view">
+        <h2>Your room has been created!</h2>
+        <span>Invite your friends to your Flix room with the code below!</span>
+        <div class="room-id-container">
+          <div id="room-id">
+            <input type="text" value="123" id="room-id-text" readonly>
+          </div>
+          <div id="copy-room-id">
+            Copy
+          </div>
         </div>
-        <div id="copy-room-id">
-          Copy
-        </div>
+      </div>
+      <div class="post-join-view">
+        <h2>Success!</h2>
+        <span>You've successfully joined the room!</span>
+        <button class="submit-btn" id="leave-room">Leave Room</button>
       </div>
     </div>
     <div class="invalid-page">

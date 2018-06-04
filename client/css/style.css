@@ -19,7 +19,7 @@
   display: flex;
 }
 
-#message-container {
+#message-area {
   flex: 1;
   width: 100%;
 }
@@ -31,6 +31,10 @@
   overflow-y: auto;
   color: white;
   background: rgba(0, 0, 0, 0.87);
+}
+
+.message-container {
+  margin-top: 10px;
 }
 
 #input-container {
@@ -60,8 +64,12 @@
   padding: 18px !important;
 }
 
-.status {
+.status, .status-self {
   padding: 2px;
+}
+
+.status-self {
+  color: rgb(43, 187, 173);
 }
 
 button:focus {

@@ -4,48 +4,62 @@ const io = require('socket.io')(http);
 
 const PORT = process.env.PORT || 3000;
 
-const rooms = {};
+const rooms = {
+  '1': {
+    showId: '70276688',
+    theme: 'robohash',
+    owner: 'Adam'
+  }
+};
 
 app.get('/', function(req, res){
   res.send('I love bacon');
 });
 
 io.on('connection', function(socket){
-  let username, gravatar;
 
-  socket.emit('room id', { id: socket.id });
+  socket.emit('roomId', { id: socket.id });
 
   // Add room to room list
   socket.on('create', function({ id, showId, owner, theme }) {
     rooms[id] = { owner, theme, showId };
-    console.log(rooms)
   });
 
-  socket.on('join', function({ name, gravatarURL }) {
-    username = name;
-    gravatar = gravatarURL;
-    sendStatus(`${name} joined the room!`);
+  socket.on('join', function({ username, roomId }) {
+    const room = rooms[roomId];
+    if (room == null) {
+      socket.emit('joinResponse', {});
+    } else {
+      socket.emit('joinResponse', { showId: room.showId });
+      socket.join(roomId);
+      sendStatus(socket, roomId, `${username} joined the room!`);
+      sendStatusSelf(socket, 'You joined the room!');
+    }
   });
 
-  // data = { username, gravatar, msg }
-  socket.on('chat message', function(data){
-    socket.broadcast.emit('chat message', data);
-    socket.emit('user message', data);
+  socket.on('chatMessage', function(data){
+    const { username, roomId, msg } = data;
+    const gravatar = getGravatarURL(username, rooms[roomId].theme);
+    socket.to(roomId).emit('chatMessage', { username, gravatar, msg });
+    socket.emit('userMessage', { gravatar, msg });
   });
   socket.on('disconnect', function(){
-    console.log(`${username} disconnected.`);
+    console.log(`User disconnected.`);
   });
-  socket.on('play', function() {
-    socket.broadcast.emit('command', { command: 'play' });
-    sendStatus(`Video played by ${username}.`);
+  socket.on('play', function({ username, roomId }) {
+    socket.to(roomId).emit('command', { command: 'play' });
+    sendStatus(socket, roomId, `Video played by ${username}.`);
+    sendStatusSelf(socket, 'You played the video.');
   });
-  socket.on('pause', function({ time }) {
-    socket.broadcast.emit('command', { command: 'pause' });
-    sendStatus(`Video paused by ${username} at ${time}.`);
+  socket.on('pause', function({ username, roomId, time }) {
+    socket.to(roomId).emit('command', { command: 'pause' });
+    sendStatus(socket, roomId, `Video paused by ${username} at ${time}.`);
+    sendStatusSelf(socket, `You paused the video at ${time}.`);
   });
-  socket.on('seek', function({ time, factor }) {
-    socket.broadcast.emit('command', { command: 'seek', factor });
-    sendStatus(`Video seeked to ${time}.`);
+  socket.on('seek', function({ username, roomId, time, factor }) {
+    socket.to(roomId).emit('command', { command: 'seek', factor });
+    sendStatus(socket, roomId, `${username} seeked to ${time}.`);
+    sendStatusSelf(socket, `You seeked to ${time}.`);
   });
 });
 
@@ -53,7 +67,29 @@ http.listen(PORT, function(){
   console.log(`Listening on port ${PORT}`);
 });
 
-// msg = { status }
-function sendStatus(status) {
-  io.emit('status', { status });
+// Broadcast status to room
+function sendStatus(socket, room, status) {
+  socket.to(room).emit('status', { status });
+}
+
+// Send status to self
+function sendStatusSelf(socket, status) {
+  socket.emit('statusSelf', { status });
+}
+
+// Hash username
+function hashString(str) {
+  var hash = 0, i, chr;
+  if (str.length === 0) return hash;
+  for (i = 0; i < str.length; i++) {
+    chr   = str.charCodeAt(i);
+    hash  = ((hash << 5) - hash) + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+};
+
+// Generate gravtar url
+function getGravatarURL(username, icon) {
+  return `http://www.gravatar.com/avatar/${hashString(username)}?d=${icon}`;
 }

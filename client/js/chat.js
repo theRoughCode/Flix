@@ -1,19 +1,4 @@
-function hashString(str) {
-  var hash = 0, i, chr;
-  if (str.length === 0) return hash;
-  for (i = 0; i < str.length; i++) {
-    chr   = str.charCodeAt(i);
-    hash  = ((hash << 5) - hash) + chr;
-    hash |= 0; // Convert to 32bit integer
-  }
-  return hash;
-};
-
-function getGravatarURL(username) {
-  return `http://www.gravatar.com/avatar/${hashString(username)}?d=robohash`;
-}
-
-function createChat(username, socket) {
+function createChat(username, roomId) {
   const div = document.createElement('div');
   const app = document.querySelector('.sizing-wrapper');
   app.parentNode.insertBefore(div, app.nextSibling);
@@ -22,46 +7,46 @@ function createChat(username, socket) {
     el: div,
     data: {
       filepath: chrome.extension.getURL("img/emojione-assets/png/"),
-      socket, // Our websocket
+      socket: io.connect('http://localhost:3000'), // Our websocket
       newMsg: '', // Holds new messages to be sent to the server
       chatContent: '', // A running list of chat messages displayed on the screen
-      email: null, // Email address used for grabbing an avatar
-      username, // Our username,
-      gravatar: '', // Gravatar URL
       joined: false, // True if email and username have been filled in
     },
     created: function() {
       const self = this;
-      self.gravatar = getGravatarURL(self.username);
       const socket = self.socket;
 
-      // Join session
-      socket.emit('join', { name: self.username, gravatarURL: self.gravatar });
+      // Join specified room id
+      socket.emit('join', { username, roomId });
+
+      // TODO: Implement join url
+      // socket.on('joinResponse', ({ showId }) => console.log(showId));
 
       // Receive incoming message
-      socket.on('chat message', function (data) {
+      socket.on('chatMessage', function (data) {
         const { msg, username, gravatar } = data;
         self.chatContent += self.formatMessage(username, gravatar, msg);
       });
 
       // Receiver own message
-      socket.on('user message', function(data) {
-        const { msg, username, gravatar } = data;
+      socket.on('userMessage', function(data) {
+        const { msg, gravatar } = data;
         self.chatContent += self.formatMessage(username, gravatar, msg, true);
       });
 
       // Receive incoming statuses
       socket.on('status', function({ status }) {
-        self.chatContent += `
-          <p class="status">${status}</p>
-        `;
+        self.chatContent += `<p class="status">${status}</p>`;
+      });
+      socket.on('statusSelf', function({ status }) {
+        self.chatContent += `<p class="status-self">${status}</p>`;
       });
 
       // Handle incoming controls
       socket.on('command', commandHandler);
 
       // Add button listeners to control panel
-      addButtonListeners(socket);
+      addButtonListeners(socket, username, roomId);
     },
     methods: {
       onInput: function(e) {
@@ -72,9 +57,9 @@ function createChat(username, socket) {
       },
       send: function() {
         if (!/\S/.test(this.newMsg)) return;
-        this.socket.emit('chat message', {
-          username: this.username,
-          gravatar: this.gravatar,
+        this.socket.emit('chatMessage', {
+          username,
+          roomId,
           msg: this.newMsg
         });
         this.newMsg = "";
@@ -82,7 +67,7 @@ function createChat(username, socket) {
       formatMessage: function(username, gravatar, msg, isSelf = false) {
         const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
         return `
-          <div class="row valign-wrapper">
+          <div class="message-container row valign-wrapper">
             <div class="col s2 avatar">
               <img
                 src="${gravatar}"
@@ -113,7 +98,7 @@ function createChat(username, socket) {
         // Chat box
         h('div', {
           attrs: {
-            id: 'message-container'
+            id: 'message-area'
           },
           class: { row: true }
         }, [
@@ -185,29 +170,34 @@ function createChat(username, socket) {
   });
 }
 
-function toggleChat() {
+function toggleChat(show) {
   waitTillVisible('.flix-sidebar', 10000).then(() => {
-    $('.sizing-wrapper').toggleClass('chat-active');
-    $('.flix-sidebar').toggleClass('chat-active');
+    if (show) {
+      $('.sizing-wrapper').addClass('chat-active');
+      $('.flix-sidebar').addClass('chat-active');
+    } else {
+      $('.sizing-wrapper').removeClass('chat-active');
+      $('.flix-sidebar').removeClass('chat-active');
+    }
   }, () => console.log('Could not create chat in time.'));
 }
 
 // Handles user's controls and broadcasts them to the room
-function buttonHandler(type, socket, factor) {
+function buttonHandler(type, socket, username, roomId) {
   const seeker = document.querySelector('.scrubber-head');
   const currTimestamp = seeker.getAttribute('aria-valuetext').split(' ')[0];
   switch (type.toLowerCase()) {
     case 'play':
-      socket.emit('play');
+      socket.emit('play', { username, roomId });
       break;
     case 'pause':
-      socket.emit('pause', { time: currTimestamp });
+      socket.emit('pause', { username, roomId, time: currTimestamp });
       break;
     case 'seek':
       const seekValue = seeker.getAttribute('aria-valuenow');
       const seekMax = seeker.getAttribute('aria-valuemax');
       const factor = seekValue / seekMax;
-      socket.emit('seek', { time: currTimestamp, factor });
+      socket.emit('seek', { username, roomId, time: currTimestamp, factor });
       break;
     default:
       console.log(`Invalid aria label: ${ariaLabel}`);
@@ -239,15 +229,15 @@ function commandHandler(data) {
 }
 
 // Add event listeners to control panel
-function addButtonListeners(socket, username, gravatar) {
+function addButtonListeners(socket, username, roomId) {
   waitTillVisible('.PlayerControls--button-control-row', 100000).then(() => {
     const btnControl = document.querySelector('.PlayerControls--button-control-row');
     const buttons = btnControl.querySelectorAll('button');
     const ppButton = buttons[0];
     const track = document.querySelector('.scrubber-bar');
 
-    ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label'), socket));
-    track.addEventListener('click', () => buttonHandler('seek', socket));
+    ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label'), socket, username, roomId));
+    track.addEventListener('click', () => buttonHandler('seek', socket, username, roomId));
   }, () => console.log('Could not get buttons on time'));
 }
 
@@ -322,14 +312,16 @@ function seek(factor) {
 chrome.runtime.onMessage.addListener(
   function(request, sender, sendResponse) {
     if (request.command === 'create') {
-      const  { username, socket } = request;
-      createChat(username, socket);
+      const  { username, roomId } = request.params;
+      createChat(username, roomId);
     } else if (request.command === "join") {
       sendResponse({response: "joined chat"});
+      console.log('join')
       createChat();
     } else if (request.command === "toggleChat") {
+      const { show } = request.params;
       sendResponse({response: "toggled chat"});
-      toggleChat();
+      toggleChat(show);
     }
   }
 );

@@ -1,27 +1,28 @@
-function sendCommand(command, callback) {
+function sendCommand(command, params, callback) {
   chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-    chrome.tabs.sendMessage(tabs[0].id, { command }, callback);
+    chrome.tabs.sendMessage(tabs[0].id, { command, params }, callback);
   });
 }
 
 function createSession(socket, roomId, showId, username, iconTheme) {
-  const data = {
-    command: 'create',
-    socket,
-    username
-  };
   socket.emit('create', { id: roomId, showId, owner: username, theme: iconTheme });
-  chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-    chrome.tabs.sendMessage(tabs[0].id, data);
+  sendCommand('create', { username, roomId });
+}
+
+function joinSession(socket, roomId, username, callback) {
+  socket.emit('join', { roomId, username });
+  socket.on('joinResponse', ({ showId }) => {
+    if (showId == null) {
+      callback(false);
+    } else {
+      callback(true);
+      sendCommand('join');
+    }
   });
 }
 
-function joinSession() {
-  sendCommand('join', res => console.log(res));
-}
-
-function toggleChat() {
-  sendCommand('toggleChat', res => console.log(res));
+function toggleChat(show) {
+  sendCommand('toggleChat', { show });
 }
 
 
@@ -30,11 +31,10 @@ document.addEventListener('DOMContentLoaded', function() {
   let roomId = -1;
   let showId = -1;
 
-  socket.on('room id', ({ id }) => {
+  socket.on('roomId', ({ id }) => {
     roomId = id;
     $("#room-id-text").val(id);
   });
-  // joinSession();
 
   // const checkPageButton = document.getElementById('checkPage');
   // checkPageButton.addEventListener('click', function() {
@@ -74,14 +74,23 @@ document.addEventListener('DOMContentLoaded', function() {
     $('.choose-container').hide();
     $('.form-container').hide();
     $('.room-form').show(100);
+    $('.post-create-view').show();
   });
   joinRoomSubmitBtn.addEventListener('click', function() {
     const username = $("#username").val();
     if (!username) return;
     const room = $("#room").val();
     if (!room) return;
-    console.log(username);
-    console.log(room);
+    joinSession(socket, room, username, valid => {
+      if (!valid) {
+        $('#invalid-room').show();
+      } else {
+        $('.choose-container').hide();
+        $('.form-container').hide();
+        $('.room-form').show(100);
+        $('.post-join-view').show();
+      }
+    });
   });
 
   const copyRoomIdBtn = document.querySelector('#copy-room-id');
@@ -91,6 +100,17 @@ document.addEventListener('DOMContentLoaded', function() {
     document.execCommand("copy");
     copyRoomIdBtn.innerHTML = "Copied!";
   });
+
+  // Listen to toggle chat
+  $("#toggle-chat").change(function() {
+    if ($(this).is(':checked')) {
+      toggleChat(true);
+    } else {
+      toggleChat(false);
+    }
+  });
+
+  // TODO: Implement leave room
 
   // Add link to Netflix
   $('#netflix').on('click', function() {
