@@ -10,6 +10,10 @@
       body {
         min-width: 300px;
       }
+      h2 {
+        margin-top: 15px;
+        margin-bottom: 10px;
+      }
       .choose-container {
         height: 100px;
         display: flex;
@@ -88,9 +92,8 @@
       .room-form {
         display: none;
         flex-direction: column;
-      }
-      .room-form h2 {
-        margin-top: 10px;
+        margin: 5px;
+        margin-bottom: 20px;
       }
       .room-form span {
         font-size: 15px;
@@ -142,6 +145,10 @@
         line-height: 40px;
       }
 
+      .header {
+        width: 100%;
+        height: 20px;
+      }
       .toggle-container {
         float: right;
       }
@@ -207,6 +214,15 @@
       .slider.round:before {
         border-radius: 50%;
       }
+
+      .invalid-page {
+        display: none;
+        margin: 10px;
+        margin-bottom: 15px;
+      }
+      .invalid-page span {
+        font-size: 15px;
+      }
     </style>
   </head>
   <body>
@@ -252,7 +268,7 @@
       </div>
     </div>
     <div class="room-form">
-      <div>
+      <div class="header">
         <div class="toggle-container">
           <span>Toggle chat</span>
           <label class="switch">
@@ -272,6 +288,9 @@
         </div>
       </div>
     </div>
-    <!-- <button id="checkPage">Check this page now!</button> -->
+    <div class="invalid-page">
+      <h2>Oops...</h2>
+      <span>Head on to <a id="netflix">Netflix</a> and begin watching a show to create a room!</span>
+    </div>
   </body>
 </html>

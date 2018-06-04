@@ -16,8 +16,9 @@ io.on('connection', function(socket){
   socket.emit('room id', { id: socket.id });
 
   // Add room to room list
-  socket.on('create', function({ id, owner, theme }) {
-    rooms[id] = { owner, theme };
+  socket.on('create', function({ id, showId, owner, theme }) {
+    rooms[id] = { owner, theme, showId };
+    console.log(rooms)
   });
 
   socket.on('join', function({ name, gravatarURL }) {
