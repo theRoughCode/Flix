@@ -1,5 +1,7 @@
 emojione.imagePathPNG = chrome.extension.getURL("img/emojione-assets/png/32/");
 
+const socket = io.connect('http://localhost:3000');
+
 function createChat(username, roomId) {
   const div = document.createElement('div');
   const app = document.querySelector('.sizing-wrapper');
@@ -9,14 +11,12 @@ function createChat(username, roomId) {
     el: div,
     data: {
       filepath: chrome.extension.getURL("img/emojione-assets/png/"),
-      socket: io.connect('http://localhost:3000'), // Our websocket
       newMsg: '', // Holds new messages to be sent to the server
       chatContent: '', // A running list of chat messages displayed on the screen
       joined: false, // True if email and username have been filled in
     },
     created: function() {
       const self = this;
-      const socket = self.socket;
 
       // Join specified room id
       socket.emit('join', { username, roomId });
@@ -59,7 +59,7 @@ function createChat(username, roomId) {
       },
       send: function() {
         if (!/\S/.test(this.newMsg)) return;
-        this.socket.emit('chatMessage', {
+        socket.emit('chatMessage', {
           username,
           roomId,
           msg: this.newMsg
@@ -188,6 +188,10 @@ function toggleChat(show) {
       $('.flix-sidebar').removeClass('chat-active');
     }
   }, () => console.log('Could not create chat in time.'));
+}
+
+function leaveChat() {
+  socket.emit('leave');
 }
 
 // Handles user's controls and broadcasts them to the room
@@ -319,17 +323,23 @@ function seek(factor) {
 // Listen to incoming messages from popup.html
 chrome.runtime.onMessage.addListener(
   function(request, sender, sendResponse) {
-    if (request.command === 'create') {
-      const  { username, roomId } = request.params;
-      createChat(username, roomId);
-    } else if (request.command === "join") {
-      sendResponse({response: "joined chat"});
-      console.log('join')
-      createChat();
-    } else if (request.command === "toggleChat") {
-      const { show } = request.params;
-      sendResponse({response: "toggled chat"});
-      toggleChat(show);
+    switch (request.command) {
+      case 'create':
+        const  { username, roomId } = request.params;
+        createChat(username, roomId);
+        break;
+      case 'join':
+        sendResponse({response: "joined chat"});
+        createChat();
+        break;
+      case 'toggleChat':
+        const { show } = request.params;
+        sendResponse({response: "toggled chat"});
+        toggleChat(show);
+        break;
+      case 'leave':
+        leaveChat();
+        break;
     }
   }
 );

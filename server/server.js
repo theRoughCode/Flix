@@ -17,6 +17,10 @@ app.get('/', function(req, res){
 });
 
 io.on('connection', function(socket){
+  const user = {
+    name: "",
+    roomId: ""
+  };
 
   socket.emit('roomId', { id: socket.id });
 
@@ -27,10 +31,16 @@ io.on('connection', function(socket){
 
   socket.on('join', function({ username, roomId }) {
     const room = rooms[roomId];
+    user.name = username;
+
     if (room == null) {
       socket.emit('joinResponse', {});
     } else {
       socket.emit('joinResponse', { showId: room.showId });
+      // If there is an existing socket
+      // TODO: Disale user from sending chat messages to that chat
+      if (user.roomId.length) socket.leave(user.roomId);
+      user.roomId = roomId;
       socket.join(roomId);
       sendStatus(socket, roomId, `${username} joined the room!`);
       sendStatusSelf(socket, 'You joined the room!');
@@ -43,9 +53,15 @@ io.on('connection', function(socket){
     socket.to(roomId).emit('chatMessage', { username, gravatar, msg });
     socket.emit('userMessage', { gravatar, msg });
   });
-  socket.on('disconnect', function(){
-    console.log(`User disconnected.`);
+  socket.on('leave', function() {
+    socket.leave(user.roomId);
+      sendStatus(socket, user.roomId, `${user.name} left the room.`);
+      sendStatusSelf(socket, 'You left the room.');
   });
+  // socket.on('disconnect', function(){
+  //   sendStatus(socket, user.roomId, `${user.name} left the room.`);
+  //   sendStatusSelf(socket, 'You left the room.');
+  // });
   socket.on('play', function({ username, roomId }) {
     socket.to(roomId).emit('command', { command: 'play' });
     sendStatus(socket, roomId, `Video played by ${username}.`);

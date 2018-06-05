@@ -19,7 +19,8 @@
     "128": "img/get_started128.png"
   },
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "content_scripts": [
     {
