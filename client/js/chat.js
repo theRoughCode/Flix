@@ -1,3 +1,5 @@
+emojione.imagePathPNG = chrome.extension.getURL("img/emojione-assets/png/32/");
+
 function createChat(username, roomId) {
   const div = document.createElement('div');
   const app = document.querySelector('.sizing-wrapper');
@@ -25,21 +27,21 @@ function createChat(username, roomId) {
       // Receive incoming message
       socket.on('chatMessage', function (data) {
         const { msg, username, gravatar } = data;
-        self.chatContent += self.formatMessage(username, gravatar, msg);
+        self.displayMessage(self.formatMessage(username, gravatar, msg));
       });
 
       // Receiver own message
       socket.on('userMessage', function(data) {
         const { msg, gravatar } = data;
-        self.chatContent += self.formatMessage(username, gravatar, msg, true);
+        self.displayMessage(self.formatMessage(username, gravatar, msg, true));
       });
 
       // Receive incoming statuses
       socket.on('status', function({ status }) {
-        self.chatContent += `<p class="status">${status}</p>`;
+        self.displayMessage(`<p class="status">${status}</p>`);
       });
       socket.on('statusSelf', function({ status }) {
-        self.chatContent += `<p class="status-self">${status}</p>`;
+        self.displayMessage(`<p class="status-self">${status}</p>`);
       });
 
       // Handle incoming controls
@@ -78,12 +80,18 @@ function createChat(username, roomId) {
             <div class="col s10">
               <div class="card-panel ${colour} lighten-5 z-depth-1 message">
                 <span>
-                  ${emojione.toImage(msg, this.filepath)}
+                  ${emojione.toImage(msg)}
                 </span>
               </div>
             </div>
           </div>
         `;
+      },
+      displayMessage: function(message) {
+        this.chatContent += message;
+        // Auto scroll to the bottom
+        const messages = document.getElementById('chat-messages');
+        setTimeout(() => messages.scrollTop = messages.scrollHeight, 100);
       }
     },
     render: function (h) {

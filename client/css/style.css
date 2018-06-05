@@ -64,6 +64,13 @@
   padding: 18px !important;
 }
 
+.message img {
+  height: 20px;
+  vertical-align: text-bottom;
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
 .status, .status-self {
   padding: 2px;
 }
