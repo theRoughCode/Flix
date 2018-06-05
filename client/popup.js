@@ -7,28 +7,23 @@ const STATES = {
 Object.freeze(STATES);
 
 // LOCAL STORAGE
+// keys: state, toggle, roomId
 
 // store key-value in local storage
 function store(key, value) {
   key = `flix-${key}`;
-  chrome.storage.local.set({ key: value }, function() {
-    console.log(`${key} is set to ${value}`);
-  });
+  const data = {};
+  data[key] = value;
+  chrome.storage.local.set(data);
 }
 // retrieve value of key in callback
 function retrieve(key, callback) {
   key = `flix-${key}`;
-  chrome.storage.local.get([key], callback);
+  chrome.storage.local.get(key, result => callback(result[key]));
 }
 // Set state of app
 function setState(state) {
   store('state', state);
-}
-// Listen and store values of input
-function listenToInput(field) {
-  $(`#${field}`).change(function() {
-    store(field, $(`#${field}`).val());
-  });
 }
 // Initialize session storage
 function initializeStorage() {
@@ -77,14 +72,36 @@ function open(url) {
   chrome.tabs.create({ url });
 }
 
+// TODO: listen for on refresh and clear storage
+
 
 document.addEventListener('DOMContentLoaded', function() {
   const socket = io.connect('http://localhost:3000');
   let roomId = -1;
   let showId = -1;
 
+  // Retrieve state
+  retrieve('state', state => {
+    switch (state) {
+      case STATES.POST_CREATE:
+        $('.choose-container').hide();
+        $('.room-form').show();
+        $('.post-create-view').show();
+        retrieve('roomId', id => roomId = id);
+        retrieve('toggle', toggle => $('#toggle-chat').prop('checked', toggle));
+        break;
+      case STATES.POST_JOIN:
+        $('.choose-container').hide();
+        $('.room-form').show();
+        $('.post-join-view').show();
+        retrieve('toggle', toggle => $('#toggle-chat').prop('checked', toggle));
+        break;
+    }
+  });
+
   socket.on('roomId', ({ id }) => {
     roomId = id;
+    store('roomId', id);
     $("#room-id-text").val(id);
   });
 
@@ -163,9 +180,9 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Listen to toggle chat
-  $("#toggle-chat").change(function() {
-    const toggleOn = $(this).is(':checked');
-    toggleChat(toggleOn);
+  const toggleSwitch = document.querySelector('#toggle-chat');
+  toggleSwitch.addEventListener('change', function() {
+    toggleChat(this.checked);
   });
 
   // Add link to Netflix
