@@ -1,29 +1,67 @@
 // States
 const STATES = {
   DEFAULT: 1,
-  POST_CREATE: 2,
-  POST_JOIN: 3
+  CREATE_FORM: 2,
+  JOIN_FORM: 3,
+  POST_CREATE: 4,
+  POST_JOIN: 5
 };
 Object.freeze(STATES);
 
+// Vars
+const USER = {
+  showId: '',
+  roomId: -1,
+  hostId: -1,
+  socket: null,
+  tabId: -1
+};
+
 // LOCAL STORAGE
-// keys: state, toggle, roomId
+// keys: state , toggle, roomId, tabId, username
+const nullKeys = {
+  roomId: -1,
+  tabId: -1,
+  username: '',
+}
 
 // store key-value in local storage
 function store(key, value) {
   key = `flix-${key}`;
   const data = {};
   data[key] = value;
+  console.log(`Store ${value} as ${key}`);
   chrome.storage.local.set(data);
 }
 // retrieve value of key in callback
 function retrieve(key, callback) {
   key = `flix-${key}`;
-  chrome.storage.local.get(key, result => callback(result[key]));
+  chrome.storage.local.get(key, result => {
+    console.log(`Retrieving ${key} as ${result[key]}`);
+    if (result[key] === nullKeys[key]) callback(null);
+    else callback(result[key]);
+  });
+}
+// retrieve set of keys
+function retrieveKeys(keys, callback) {
+  chrome.storage.local.get(null, result => {
+    console.log(JSON.stringify(result));
+    const values = {};
+    keys.forEach(key => {
+      const fmtKey = `flix-${key}`;
+      values[key] = (result[fmtKey] === nullKeys[key]) ? null : result[fmtKey];
+    });
+    console.log(values);
+    callback(values);
+  });
 }
 // Set state of app
 function setState(state) {
   store('state', state);
+}
+// Reset key to default
+function resetKey(key) {
+  store(key, nullKeys[key]);
 }
 // Initialize session storage
 function initializeStorage() {
@@ -33,78 +71,121 @@ function initializeStorage() {
 function resetStorage() {
   setState(STATES.DEFAULT);
   store('toggle', false);
+  store('roomId', USER.hostId);
+  resetKey('tabId');
+  resetKey('username');
+}
+
+
+// HELPERS
+
+function getShowId(url) {
+  // Check if watching a netflix show
+  if (url.startsWith('https://www.netflix.com/watch/')) {
+    url = new URL(url);
+    return url.pathname.split("/")[2];
+  }
+
+  return null;
+}
+
+function setTabId(tabId) {
+  USER.tabId = tabId;
+  store('tabId', tabId);
 }
 
 
 // CHANNELS
 
-function sendCommand(command, params, callback) {
+function sendCommandToTab(id, command, params, callback) {
   chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-    chrome.tabs.sendMessage(tabs[0].id, { command, params }, callback);
+    const tabId = id || tabs[0].id;
+    chrome.tabs.sendMessage(tabId, { command, params }, callback);
   });
 }
 
-function createSession(socket, roomId, showId, username, iconTheme) {
-  socket.emit('create', { id: roomId, showId, owner: username, theme: iconTheme });
-  sendCommand('create', { username, roomId });
+function sendCommandToActiveTab(command, params, callback) {
+  sendCommandToTab(null, command, params, callback);
 }
 
-function joinSession(socket, roomId, username, callback) {
+function createSession(username, iconTheme) {
+  const { socket, showId, roomId } = USER;
+  console.log(USER)
+  console.log(roomId)
+  $("#room-id-text").val(roomId);
+  socket.emit('create', { id: roomId, showId, owner: username, theme: iconTheme });
+  store('roomId', roomId);
+  store('toggle', false);
+  store('username', username);
+  sendCommandToActiveTab('create', { username, roomId });
+}
+
+// TODO: Bug - invalid room id then valid opens 2 urls
+function joinSession(roomId, username, callback) {
+  const { socket } = USER;
   socket.emit('join', { roomId, username });
   socket.on('joinResponse', ({ showId }) => {
     if (showId == null) {
       callback(false);
     } else {
-      callback(true);
-      open(`https://www.netflix.com/watch/${showId}`);
-      sendCommand('join');
+      store('roomId', roomId);
+      store('toggle', false);
+      store('username', username);
+      open(`https://www.netflix.com/watch/${showId}`, tab => {
+        setTabId(tab.id);
+        callback(true);
+        setTimeout(() => sendCommandToTab(tab.id, 'join', { username, roomId }), 1000);
+      });
     }
   });
 }
 
+function leaveSession() {
+  USER.showId = '';
+  setTabId(-1);
+  resetStorage();
+  sendCommandToActiveTab('leave');
+  $('.choose-container').show(100);
+  $('.room-form').hide();
+  $('#toggle-chat').prop('checked', false);
+  toggleChat(false);
+}
+
 function toggleChat(show) {
   store('toggle', show);
-  sendCommand('toggleChat', { show });
+  sendCommandToActiveTab('toggleChat', { show });
 }
 
 // Open new tab to url
-function open(url) {
-  chrome.tabs.create({ url });
+function open(url, callback) {
+  chrome.tabs.create({ url }, callback);
 }
 
 // TODO: listen for on refresh and clear storage
 
 
-document.addEventListener('DOMContentLoaded', function() {
-  const socket = io.connect('http://localhost:3000');
-  let roomId = -1;
-  let showId = -1;
+// Set up popup
+function setView(state) {
+  switch (state) {
+    case STATES.DEFAULT:
+      $('.choose-container').show(100);
+      $('.room-form').hide();
+      $('#toggle-chat').prop('checked', false);
+    case STATES.POST_CREATE:
+      $('.choose-container').hide();
+      $('.room-form').show();
+      $('.post-create-view').show();
+      break;
+    case STATES.POST_JOIN:
+      $('.choose-container').hide();
+      $('.room-form').show();
+      $('.post-join-view').show();
+      break;
+  }
+}
 
-  // Retrieve state
-  retrieve('state', state => {
-    switch (state) {
-      case STATES.POST_CREATE:
-        $('.choose-container').hide();
-        $('.room-form').show();
-        $('.post-create-view').show();
-        retrieve('roomId', id => roomId = id);
-        retrieve('toggle', toggle => $('#toggle-chat').prop('checked', toggle));
-        break;
-      case STATES.POST_JOIN:
-        $('.choose-container').hide();
-        $('.room-form').show();
-        $('.post-join-view').show();
-        retrieve('toggle', toggle => $('#toggle-chat').prop('checked', toggle));
-        break;
-    }
-  });
-
-  socket.on('roomId', ({ id }) => {
-    roomId = id;
-    store('roomId', id);
-    $("#room-id-text").val(id);
-  });
-
+// Add button listeners
+function addButtonListeners(tabs) {
   const createRoomBtn = document.getElementById('create');
   const joinRoomBtn = document.getElementById('join');
   const createRoomSubmitBtn = document.getElementById('submit-create');
@@ -112,31 +193,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
   createRoomBtn.addEventListener('click', function () {
     // Check if watching a netflix show
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      if (tabs[0].url.startsWith('https://www.netflix.com/watch/')) {
-        // Set showId
-        const url = new URL(tabs[0].url);
-        showId = url.pathname.split("/")[2];
-        $(".form-container").show(100);
-        $("#form-join").hide();
-        $("#form-create").show();
-      } else {
-        $(".form-container").hide();
-        $(".invalid-page").show();
-        setState(STATES.DEFAULT);
-      }
-    });
+    const showId = getShowId(tabs[0].url);
+
+    if (showId != null) {
+      // Set showId
+      USER.showId = showId;
+      // Set tabId
+      setTabId(tabs[0].id);
+      $(".form-container").show(100);
+      $("#form-join").hide();
+      $(".invalid-page").hide();
+      $("#form-create").show();
+    } else {
+      $(".form-container").hide();
+      $(".invalid-page").show();
+      setState(STATES.DEFAULT);
+    }
   });
   joinRoomBtn.addEventListener('click', function () {
     $(".form-container").show(100);
     $("#form-create").hide();
+    $(".invalid-page").hide();
     $("#form-join").show();
   });
   createRoomSubmitBtn.addEventListener('click', function() {
     const username = $("#username").val();
     if (!username) return;
     const iconTheme = $("#icons").val();
-    createSession(socket, roomId, showId, username, iconTheme);
+    createSession(username, iconTheme);
     $('.choose-container').hide();
     $('.form-container').hide();
     $('.room-form').show(100);
@@ -148,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!username) return;
     const room = $("#room").val();
     if (!room) return;
-    joinSession(socket, room, username, valid => {
+    joinSession(room, username, valid => {
       if (!valid) {
         $('#invalid-room').show();
       } else {
@@ -171,12 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const leaveRoomBtn = document.querySelector('#leave-room');
   leaveRoomBtn.addEventListener('click', function() {
-    sendCommand('leave');
-    resetStorage();
-    $('.choose-container').show(100);
-    $('.room-form').hide();
-    $('#toggle-chat').prop('checked', false);
-    toggleChat(false);
+    leaveSession();
   });
 
   // Listen to toggle chat
@@ -188,5 +267,66 @@ document.addEventListener('DOMContentLoaded', function() {
   // Add link to Netflix
   $('#netflix').on('click', function() {
     open('https://www.netflix.com');
+  });
+}
+
+// TODO: Listen for tab close and refresh => leave room
+// TODO: Generate new roomId if you leave a room
+
+
+document.addEventListener('DOMContentLoaded', function() {
+  const socket = io.connect('http://localhost:3000');
+  USER.socket = socket;
+
+  // Listen for incoming room id from socket
+  socket.on('roomId', ({ id }) => {
+    USER.roomId = id;
+    USER.hostId = id;
+  });
+
+  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+    const showId = getShowId(tabs[0].url);
+
+    // Retrieve state
+    retrieve('state', state => {
+      switch (state) {
+        case STATES.POST_CREATE:
+          retrieveKeys(['roomId', 'toggle'], ({ roomId, toggle }) => {
+            console.log(roomId)
+            console.log(toggle)
+            if (roomId == null) roomId = USER.roomId;
+            else USER.roomId = roomId;
+            $('#toggle-chat').prop('checked', toggle);
+            $("#room-id-text").val(roomId);
+            setView(state);
+          });
+          break;
+        case STATES.POST_JOIN:
+          // Not on netflix tab
+          if (showId == null) {
+            // TODO: Set error view: not on netflix
+          } else {
+            retrieve('tabId', tabId => {
+              if (tabs[0].id != tabId) {
+                // TODO: Set error view: wrong tab
+              } else {
+                USER.tabId = tabId;
+                // TODO: Fire join event
+                sendCommand('join', { })
+                setView(state);
+                retrieve('toggle', toggle => $('#toggle-chat').prop('checked', toggle));
+              }
+            });
+          }
+          break;
+      }
+    });
+
+    addButtonListeners(tabs);
+  });
+
+  // Tabs listeners
+  chrome.tabs.onRemoved.addListener((tabId, info) => {
+
   });
 }, false);

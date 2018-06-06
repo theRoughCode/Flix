@@ -192,6 +192,8 @@ function toggleChat(show) {
 
 function leaveChat() {
   socket.emit('leave');
+  // Disable chat
+  document.getElementById('message-box').disabled = true;
 }
 
 // Handles user's controls and broadcasts them to the room
@@ -325,17 +327,15 @@ chrome.runtime.onMessage.addListener(
   function(request, sender, sendResponse) {
     switch (request.command) {
       case 'create':
-        const  { username, roomId } = request.params;
-        createChat(username, roomId);
+        createChat(request.params.username, request.params.roomId);
         break;
       case 'join':
-        sendResponse({response: "joined chat"});
-        createChat();
+        console.log('hi')
+        createChat(request.params.username, request.params.roomId);
         break;
       case 'toggleChat':
-        const { show } = request.params;
         sendResponse({response: "toggled chat"});
-        toggleChat(show);
+        toggleChat(request.params.show);
         break;
       case 'leave':
         leaveChat();

@@ -38,7 +38,7 @@ io.on('connection', function(socket){
     } else {
       socket.emit('joinResponse', { showId: room.showId });
       // If there is an existing socket
-      // TODO: Disale user from sending chat messages to that chat
+      // TODO: Disable user from sending chat messages to that chat
       if (user.roomId.length) socket.leave(user.roomId);
       user.roomId = roomId;
       socket.join(roomId);
@@ -76,6 +76,9 @@ io.on('connection', function(socket){
     socket.to(roomId).emit('command', { command: 'seek', factor });
     sendStatus(socket, roomId, `${username} seeked to ${time}.`);
     sendStatusSelf(socket, `You seeked to ${time}.`);
+  });
+  socket.on('log', function({ msg }) {
+    console.log(msg);
   });
 });
 
