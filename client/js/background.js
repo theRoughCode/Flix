@@ -13,3 +13,8 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       break;
   }
 });
+
+
+// TODO: Listen for tab close and refresh => leave room
+// TODO: Generate new roomId if you leave a room
+// TODO: listen for on refresh and rejoin room

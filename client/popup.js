@@ -162,8 +162,6 @@ function open(url, callback) {
   chrome.tabs.create({ url }, callback);
 }
 
-// TODO: listen for on refresh and clear storage
-
 
 // Set up popup
 function setView(state) {
@@ -237,10 +235,6 @@ function addButtonListeners(tabs) {
       if (!valid) {
         $('#invalid-room').show();
       } else {
-        // $('.choose-container').hide();
-        // $('.form-container').hide();
-        // $('.room-form').show(100);
-        // $('.post-join-view').show();
         setState(STATES.POST_JOIN);
       }
     });
@@ -271,12 +265,8 @@ function addButtonListeners(tabs) {
   });
 }
 
-// TODO: Listen for tab close and refresh => leave room
-// TODO: Generate new roomId if you leave a room
-
-
 document.addEventListener('DOMContentLoaded', function() {
-  const socket = io.connect('http://localhost:3000');
+  const socket = io.connect('https://flix-chrome.appspot.com/');
   USER.socket = socket;
 
   // Listen for incoming room id from socket
@@ -312,7 +302,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // TODO: Set error view: wrong tab
               } else {
                 USER.tabId = tabId;
-                // TODO: Fire join event
                 sendCommandToActiveTab('join', { username, roomId });
                 setView(state);
                 $('#toggle-chat').prop('checked', toggle);

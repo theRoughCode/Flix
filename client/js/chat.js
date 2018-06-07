@@ -1,8 +1,10 @@
 emojione.imagePathPNG = chrome.extension.getURL("img/emojione-assets/png/32/");
 
-const socket = io.connect('http://localhost:3000');
+const socket = io.connect('https://flix-chrome.appspot.com/');
+let username = "";
+let roomId = "";
 
-function createChat(username, roomId) {
+function createChat() {
   const div = document.createElement('div');
   const app = document.querySelector('.sizing-wrapper');
   app.parentNode.insertBefore(div, app.nextSibling);
@@ -20,9 +22,6 @@ function createChat(username, roomId) {
 
       // Join specified room id
       socket.emit('join', { username, roomId });
-
-      // TODO: Implement join url
-      // socket.on('joinResponse', ({ showId }) => console.log(showId));
 
       // Receive incoming message
       socket.on('chatMessage', function (data) {
@@ -191,9 +190,10 @@ function toggleChat(show) {
 }
 
 function leaveChat() {
+  // TODO: Implement clear chat
+  username = "";
+  roomId = "";
   socket.emit('leave');
-  // Disable chat
-  document.getElementById('message-box').disabled = true;
 }
 
 // Handles user's controls and broadcasts them to the room
@@ -326,10 +326,10 @@ function seek(factor) {
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   switch (request.command) {
     case 'create':
-      createChat(request.params.username, request.params.roomId);
-      break;
     case 'join':
-      createChat(request.params.username, request.params.roomId);
+      username = request.params.username;
+      roomId = request.params.roomId;
+      createChat();
       break;
     case 'toggleChat':
       sendResponse({response: "toggled chat"});
