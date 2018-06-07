@@ -11,7 +11,7 @@ Object.freeze(STATES);
 // Vars
 const USER = {
   showId: '',
-  roomId: -1,
+  roomId: '',
   hostId: -1,
   socket: null,
   tabId: -1
@@ -20,7 +20,7 @@ const USER = {
 // LOCAL STORAGE
 // keys: state , toggle, roomId, tabId, username
 const nullKeys = {
-  roomId: -1,
+  roomId: '',
   tabId: -1,
   username: '',
 }
@@ -45,13 +45,12 @@ function retrieve(key, callback) {
 // retrieve set of keys
 function retrieveKeys(keys, callback) {
   chrome.storage.local.get(null, result => {
-    console.log(JSON.stringify(result));
     const values = {};
     keys.forEach(key => {
       const fmtKey = `flix-${key}`;
       values[key] = (result[fmtKey] === nullKeys[key]) ? null : result[fmtKey];
     });
-    console.log(values);
+    console.log('Retrieving: ', values);
     callback(values);
   });
 }
@@ -97,6 +96,7 @@ function setTabId(tabId) {
 
 // CHANNELS
 
+// Send command to specific tab
 function sendCommandToTab(id, command, params, callback) {
   chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
     const tabId = id || tabs[0].id;
@@ -104,14 +104,18 @@ function sendCommandToTab(id, command, params, callback) {
   });
 }
 
+// Send command to active tab
 function sendCommandToActiveTab(command, params, callback) {
   sendCommandToTab(null, command, params, callback);
 }
 
+// Send command to background.js
+function sendRuntimeMessage(message, params, callback) {
+  chrome.runtime.sendMessage({ message, params }, callback);
+}
+
 function createSession(username, iconTheme) {
   const { socket, showId, roomId } = USER;
-  console.log(USER)
-  console.log(roomId)
   $("#room-id-text").val(roomId);
   socket.emit('create', { id: roomId, showId, owner: username, theme: iconTheme });
   store('roomId', roomId);
@@ -131,11 +135,8 @@ function joinSession(roomId, username, callback) {
       store('roomId', roomId);
       store('toggle', false);
       store('username', username);
-      open(`https://www.netflix.com/watch/${showId}`, tab => {
-        setTabId(tab.id);
-        callback(true);
-        setTimeout(() => sendCommandToTab(tab.id, 'join', { username, roomId }), 1000);
-      });
+      callback(true);
+      sendRuntimeMessage('openRoom', { showId });
     }
   });
 }
@@ -236,10 +237,10 @@ function addButtonListeners(tabs) {
       if (!valid) {
         $('#invalid-room').show();
       } else {
-        $('.choose-container').hide();
-        $('.form-container').hide();
-        $('.room-form').show(100);
-        $('.post-join-view').show();
+        // $('.choose-container').hide();
+        // $('.form-container').hide();
+        // $('.room-form').show(100);
+        // $('.post-join-view').show();
         setState(STATES.POST_JOIN);
       }
     });
@@ -292,8 +293,6 @@ document.addEventListener('DOMContentLoaded', function() {
       switch (state) {
         case STATES.POST_CREATE:
           retrieveKeys(['roomId', 'toggle'], ({ roomId, toggle }) => {
-            console.log(roomId)
-            console.log(toggle)
             if (roomId == null) roomId = USER.roomId;
             else USER.roomId = roomId;
             $('#toggle-chat').prop('checked', toggle);
@@ -306,15 +305,17 @@ document.addEventListener('DOMContentLoaded', function() {
           if (showId == null) {
             // TODO: Set error view: not on netflix
           } else {
-            retrieve('tabId', tabId => {
+            retrieveKeys(['tabId', 'username', 'roomId', 'toggle'], vals => {
+              const { tabId, username, roomId, toggle } = vals;
+              console.log(vals);
               if (tabs[0].id != tabId) {
                 // TODO: Set error view: wrong tab
               } else {
                 USER.tabId = tabId;
                 // TODO: Fire join event
-                sendCommand('join', { })
+                sendCommandToActiveTab('join', { username, roomId });
                 setView(state);
-                retrieve('toggle', toggle => $('#toggle-chat').prop('checked', toggle));
+                $('#toggle-chat').prop('checked', toggle);
               }
             });
           }

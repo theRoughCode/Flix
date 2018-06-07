@@ -323,23 +323,20 @@ function seek(factor) {
 }
 
 // Listen to incoming messages from popup.html
-chrome.runtime.onMessage.addListener(
-  function(request, sender, sendResponse) {
-    switch (request.command) {
-      case 'create':
-        createChat(request.params.username, request.params.roomId);
-        break;
-      case 'join':
-        console.log('hi')
-        createChat(request.params.username, request.params.roomId);
-        break;
-      case 'toggleChat':
-        sendResponse({response: "toggled chat"});
-        toggleChat(request.params.show);
-        break;
-      case 'leave':
-        leaveChat();
-        break;
-    }
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  switch (request.command) {
+    case 'create':
+      createChat(request.params.username, request.params.roomId);
+      break;
+    case 'join':
+      createChat(request.params.username, request.params.roomId);
+      break;
+    case 'toggleChat':
+      sendResponse({response: "toggled chat"});
+      toggleChat(request.params.show);
+      break;
+    case 'leave':
+      leaveChat();
+      break;
   }
-);
+});

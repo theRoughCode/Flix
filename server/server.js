@@ -74,8 +74,8 @@ io.on('connection', function(socket){
   });
   socket.on('seek', function({ username, roomId, time, factor }) {
     socket.to(roomId).emit('command', { command: 'seek', factor });
-    sendStatus(socket, roomId, `${username} seeked to ${time}.`);
-    sendStatusSelf(socket, `You seeked to ${time}.`);
+    sendStatus(socket, roomId, `${username} jumped to ${time}.`);
+    sendStatusSelf(socket, `You jumped to ${time}.`);
   });
   socket.on('log', function({ msg }) {
     console.log(msg);

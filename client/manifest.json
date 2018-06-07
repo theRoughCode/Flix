@@ -22,6 +22,10 @@
     "activeTab",
     "storage"
   ],
+  "background": {
+    "scripts": ["./js/background.js"],
+    "persistent": false
+  },
   "content_scripts": [
     {
       "matches": ["https://www.netflix.com/watch/*"],
