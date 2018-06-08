@@ -8,7 +8,7 @@ const rooms = {
   '1': {
     showId: '70276688',
     theme: 'robohash',
-    owner: 'Adam'
+    hostId: '1'
   }
 };
 
@@ -23,16 +23,20 @@ io.on('connection', function(socket){
   };
 
   // Add room to room list
-  socket.on('create', function({ showId, owner, theme }) {
+  socket.on('create', function({ showId, theme }) {
     const id = generateRoomId();
-    rooms[id] = { owner, theme, showId };
+    rooms[id] = { theme, showId, hostId: socket.id };
     socket.emit('createResponse', { id });
   });
 
-  socket.on('join', function({ username, roomId }) {
+  socket.on('join', function({ username, roomId, isHost }) {
     const room = rooms[roomId];
+    if (room == null) {
+      console.log(`Invalid room ${roomId} request by ${username}.`);
+      return;
+    }
+    if (isHost) rooms[roomId].hostId = socket.id;  // set host id if host joined
     user.name = username;
-    console.log(username, roomId)
 
     if (room == null) {
       socket.emit('joinResponse', {});
@@ -51,17 +55,22 @@ io.on('connection', function(socket){
   socket.on('chatMessage', function(data){
     const { username, roomId, msg } = data;
     if (roomId == null) return;
-    console.log(roomId)
-    console.log(rooms[roomId])
     const gravatar = getGravatarURL(username, rooms[roomId].theme);
     socket.to(roomId).emit('chatMessage', { username, gravatar, msg });
     socket.emit('userMessage', { gravatar, msg });
   });
-  socket.on('leave', function() {
-    // TODO: Remove room from map if noone left
-    socket.leave(user.roomId);
-      sendStatus(socket, user.roomId, `${user.name} left the room.`);
+  socket.on('leave', function({ username, roomId }) {
+    socket.leave(roomId);
+    // Host left
+    if (socket.id === rooms[roomId].hostId) {
+      sendStatus(socket, roomId, `${username} (the host) left the room.  This room will be closed.`);
+      sendStatusSelf(socket, 'You (the host) left the room. This room will be closed.');
+      socket.to(roomId).emit('command', { command: 'closeRoom' });
+      delete rooms[roomId];
+    } else {
+      sendStatus(socket, roomId, `${username} left the room.`);
       sendStatusSelf(socket, 'You left the room.');
+    }
   });
   socket.on('play', function({ username, roomId }) {
     socket.to(roomId).emit('command', { command: 'play' });

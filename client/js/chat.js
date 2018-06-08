@@ -181,7 +181,7 @@ chrome.storage.local.get(null, results => {
   const roomId = results['flix-roomId'];
   const username = results['flix-username'];
 
-  // Have not joined a shannel yet
+  // Have not joined a channel yet
   if (tabId === -1) return;
 
   // Check if watching a netflix show
@@ -191,6 +191,7 @@ chrome.storage.local.get(null, results => {
       if (tabId === response.tabId) {
         joinChat(username, roomId);
         toggleChat(true);
+        chrome.storage.local.set({ 'flix-toggle': true });
       }
     });
   }
@@ -210,22 +211,21 @@ function toggleChat(show) {
   }, () => console.log('Could not create chat in time.'));
 }
 
-function joinChat(username, roomId) {
+function joinChat(username, roomId, isHost) {
   vue.username = username;
   vue.roomId = roomId;
   vue.chatContent = '';
   socket.connect();
 
   // Join specified room id
-  socket.emit('join', { username, roomId });
+  socket.emit('join', { username, roomId, isHost });
 }
 
 function leaveChat() {
-  // TODO: Implement clear chat
+  socket.emit('leave', { username: vue.username, roomId: vue.roomId });
   vue.username = "";
   vue.roomId = "";
   vue.chatContent = "";
-  socket.emit('leave');
   socket.disconnect();
 }
 
@@ -269,6 +269,10 @@ function commandHandler(data) {
       showControls()
         .then(showScrubber)
         .then(() => seek(factor));
+      break;
+    case 'closeRoom':
+      toggleChat(false);
+      leaveChat();
       break;
     default:
       console.log(`Invalid command: ${command}`);
@@ -358,11 +362,12 @@ function seek(factor) {
 
 // Listen to incoming messages from popup.html
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  console.log(sender.tab.id)
   switch (request.command) {
     case 'create':
+      joinChat(request.params.username, request.params.roomId, true);
+      break;
     case 'join':
-      joinChat(request.params.username, request.params.roomId);
+      joinChat(request.params.username, request.params.roomId, false);
       break;
     case 'toggleChat':
       sendResponse({response: "toggled chat"});

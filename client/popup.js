@@ -118,7 +118,7 @@ function sendRuntimeMessage(message, params, callback) {
 
 function createSession(username, iconTheme) {
   const { socket, showId } = USER;
-  socket.emit('create', { showId, owner: username, theme: iconTheme });
+  socket.emit('create', { showId, theme: iconTheme });
   socket.on('createResponse', ({ id }) => {
     USER.roomId = id;
     $("#room-id-text").val(id);
@@ -188,6 +188,13 @@ function setView(state) {
   }
 }
 
+// Display error page
+function displayError(errorNum) {
+  $('.error').hide();
+  $(`#error-${errorNum}`).show();
+  $(".invalid-page").show();
+}
+
 // Add button listeners
 function addButtonListeners(tabs) {
   const createRoomBtn = document.getElementById('create');
@@ -208,7 +215,7 @@ function addButtonListeners(tabs) {
       $("#form-create").show();
     } else {
       $(".form-container").hide();
-      $(".invalid-page").show();
+      displayError(1);
       setState(STATES.DEFAULT);
     }
   });
@@ -228,6 +235,8 @@ function addButtonListeners(tabs) {
     $('.form-container').hide();
     $('.room-form').show(100);
     $('.post-create-view').show();
+    toggleChat(true);
+    $('#toggle-chat').prop('checked', true);
     setState(STATES.POST_CREATE);
   });
   joinRoomSubmitBtn.addEventListener('click', function() {
@@ -240,6 +249,8 @@ function addButtonListeners(tabs) {
       if (!valid) {
         $('#invalid-room').show();
       } else {
+        toggleChat(true);
+        $('#toggle-chat').prop('checked', true);
         setState(STATES.POST_JOIN);
       }
     });
@@ -284,18 +295,20 @@ document.addEventListener('DOMContentLoaded', function() {
         case STATES.POST_JOIN:
           // Not on netflix tab
           if (showId == null) {
-            // TODO: Set error view: not on netflix
+            $('.choose-container').hide();
+            displayError(2)
           } else if (tabs[0].id != tabId) {
-            // TODO: Set error view: wrong tab
+            $('.choose-container').hide();
+            displayError(3);
           } else {
             USER.roomId = roomId;
             USER.tabId = tabId;
             if (state === STATES.POST_CREATE) {
               $("#room-id-text").val(roomId);
             }
-            sendCommandToActiveTab('join', { username, roomId });
             setView(state);
-            toggleChat(true);
+            // toggle is already set to true from content scripts
+            $('#toggle-chat').prop('checked', true);
           }
           break;
       }
