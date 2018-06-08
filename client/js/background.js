@@ -11,6 +11,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     case 'openRoom':
       openRoom(request.params.showId);
       break;
+    case 'getTabId':
+      sendResponse({ tabId: sender.tab.id });
+      break;
   }
 });
 

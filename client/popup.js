@@ -1,3 +1,6 @@
+const DEV = true;
+const SERVER_URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.appspot.com/";
+
 // States
 const STATES = {
   DEFAULT: 1,
@@ -12,7 +15,6 @@ Object.freeze(STATES);
 const USER = {
   showId: '',
   roomId: '',
-  hostId: -1,
   socket: null,
   tabId: -1
 };
@@ -115,13 +117,16 @@ function sendRuntimeMessage(message, params, callback) {
 }
 
 function createSession(username, iconTheme) {
-  const { socket, showId, roomId } = USER;
-  $("#room-id-text").val(roomId);
-  socket.emit('create', { id: roomId, showId, owner: username, theme: iconTheme });
-  store('roomId', roomId);
-  store('toggle', false);
-  store('username', username);
-  sendCommandToActiveTab('create', { username, roomId });
+  const { socket, showId } = USER;
+  socket.emit('create', { showId, owner: username, theme: iconTheme });
+  socket.on('createResponse', ({ id }) => {
+    USER.roomId = id;
+    $("#room-id-text").val(id);
+    store('roomId', id);
+    store('toggle', false);
+    store('username', username);
+    sendCommandToActiveTab('create', { username, roomId: id });
+  });
 }
 
 // TODO: Bug - invalid room id then valid opens 2 urls
@@ -197,8 +202,6 @@ function addButtonListeners(tabs) {
     if (showId != null) {
       // Set showId
       USER.showId = showId;
-      // Set tabId
-      setTabId(tabs[0].id);
       $(".form-container").show(100);
       $("#form-join").hide();
       $(".invalid-page").hide();
@@ -219,6 +222,7 @@ function addButtonListeners(tabs) {
     const username = $("#username").val();
     if (!username) return;
     const iconTheme = $("#icons").val();
+    setTabId(tabs[0].id); // Set tabId
     createSession(username, iconTheme);
     $('.choose-container').hide();
     $('.form-container').hide();
@@ -231,6 +235,7 @@ function addButtonListeners(tabs) {
     if (!username) return;
     const room = $("#room").val();
     if (!room) return;
+    setTabId(tabs[0].id); // Set tabId
     joinSession(room, username, valid => {
       if (!valid) {
         $('#invalid-room').show();
@@ -266,47 +271,31 @@ function addButtonListeners(tabs) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  const socket = io.connect('https://flix-chrome.appspot.com/');
-  USER.socket = socket;
-
-  // Listen for incoming room id from socket
-  socket.on('roomId', ({ id }) => {
-    USER.roomId = id;
-    USER.hostId = id;
-  });
+  USER.socket = io.connect(SERVER_URL);
 
   chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
     const showId = getShowId(tabs[0].url);
 
     // Retrieve state
-    retrieve('state', state => {
+    retrieveKeys(['state', 'tabId', 'username', 'roomId', 'toggle'], vals => {
+      const { state, tabId, username, roomId, toggle } = vals;
       switch (state) {
         case STATES.POST_CREATE:
-          retrieveKeys(['roomId', 'toggle'], ({ roomId, toggle }) => {
-            if (roomId == null) roomId = USER.roomId;
-            else USER.roomId = roomId;
-            $('#toggle-chat').prop('checked', toggle);
-            $("#room-id-text").val(roomId);
-            setView(state);
-          });
-          break;
         case STATES.POST_JOIN:
           // Not on netflix tab
           if (showId == null) {
             // TODO: Set error view: not on netflix
+          } else if (tabs[0].id != tabId) {
+            // TODO: Set error view: wrong tab
           } else {
-            retrieveKeys(['tabId', 'username', 'roomId', 'toggle'], vals => {
-              const { tabId, username, roomId, toggle } = vals;
-              console.log(vals);
-              if (tabs[0].id != tabId) {
-                // TODO: Set error view: wrong tab
-              } else {
-                USER.tabId = tabId;
-                sendCommandToActiveTab('join', { username, roomId });
-                setView(state);
-                $('#toggle-chat').prop('checked', toggle);
-              }
-            });
+            USER.roomId = roomId;
+            USER.tabId = tabId;
+            if (state === STATES.POST_CREATE) {
+              $("#room-id-text").val(roomId);
+            }
+            sendCommandToActiveTab('join', { username, roomId });
+            setView(state);
+            toggleChat(true);
           }
           break;
       }

@@ -1,181 +1,202 @@
 emojione.imagePathPNG = chrome.extension.getURL("img/emojione-assets/png/32/");
+const DEV = true;
+const URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.appspot.com/";
 
-const socket = io.connect('https://flix-chrome.appspot.com/');
-let username = "";
-let roomId = "";
+// ON LOAD
+const socket = io.connect(URL);
 
-function createChat() {
-  const div = document.createElement('div');
-  const app = document.querySelector('.sizing-wrapper');
-  app.parentNode.insertBefore(div, app.nextSibling);
+const div = document.createElement('div');
+div.id = 'app';
+const app = document.querySelector('.sizing-wrapper');
+app.parentNode.insertBefore(div, app.nextSibling);
 
-  new Vue({
-    el: div,
-    data: {
-      filepath: chrome.extension.getURL("img/emojione-assets/png/"),
-      newMsg: '', // Holds new messages to be sent to the server
-      chatContent: '', // A running list of chat messages displayed on the screen
-      joined: false, // True if email and username have been filled in
+const vue = new Vue({
+  el: "#app",
+  data: {
+    filepath: chrome.extension.getURL("img/emojione-assets/png/"),
+    newMsg: '', // Holds new messages to be sent to the server
+    username: '',
+    roomId: '',
+    chatContent: '', // A running list of chat messages displayed on the screen
+    joined: false, // True if email and username have been filled in
+  },
+  created: function() {
+    const self = this;
+
+    // Receive incoming message
+    socket.on('chatMessage', function (data) {
+      const { msg, username, gravatar } = data;
+      self.displayMessage(self.formatMessage(username, gravatar, msg));
+    });
+
+    // Receiver own message
+    socket.on('userMessage', function(data) {
+      const { msg, gravatar } = data;
+      self.displayMessage(self.formatMessage(self.username, gravatar, msg, true));
+    });
+
+    // Receive incoming statuses
+    socket.on('status', function({ status }) {
+      self.displayMessage(`<p class="status">${status}</p>`);
+    });
+    socket.on('statusSelf', function({ status }) {
+      self.displayMessage(`<p class="status-self">${status}</p>`);
+    });
+
+    // Handle incoming controls
+    socket.on('command', commandHandler);
+
+    // Add button listeners to control panel
+    addButtonListeners();
+  },
+  methods: {
+    onInput: function(e) {
+      this.newMsg = e.target.value;
     },
-    created: function() {
-      const self = this;
-
-      // Join specified room id
-      socket.emit('join', { username, roomId });
-
-      // Receive incoming message
-      socket.on('chatMessage', function (data) {
-        const { msg, username, gravatar } = data;
-        self.displayMessage(self.formatMessage(username, gravatar, msg));
-      });
-
-      // Receiver own message
-      socket.on('userMessage', function(data) {
-        const { msg, gravatar } = data;
-        self.displayMessage(self.formatMessage(username, gravatar, msg, true));
-      });
-
-      // Receive incoming statuses
-      socket.on('status', function({ status }) {
-        self.displayMessage(`<p class="status">${status}</p>`);
-      });
-      socket.on('statusSelf', function({ status }) {
-        self.displayMessage(`<p class="status-self">${status}</p>`);
-      });
-
-      // Handle incoming controls
-      socket.on('command', commandHandler);
-
-      // Add button listeners to control panel
-      addButtonListeners(socket, username, roomId);
+    onKeyUp: function(e) {
+      if (e.keyCode === 13) this.send();
     },
-    methods: {
-      onInput: function(e) {
-        this.newMsg = e.target.value;
-      },
-      onKeyUp: function(e) {
-        if (e.keyCode === 13) this.send();
-      },
-      send: function() {
-        if (!/\S/.test(this.newMsg)) return;
-        socket.emit('chatMessage', {
-          username,
-          roomId,
-          msg: this.newMsg
-        });
-        this.newMsg = "";
-      },
-      formatMessage: function(username, gravatar, msg, isSelf = false) {
-        const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
-        return `
-          <div class="message-container row valign-wrapper">
-            <div class="col s2 avatar">
-              <img
-                src="${gravatar}"
-                title="${username}"
-                class="circle reponsive-img avatar-img"
-              >
-            </div>
-            <div class="col s10">
-              <div class="card-panel ${colour} lighten-5 z-depth-1 message">
-                <span>
-                  ${emojione.toImage(msg)}
-                </span>
-              </div>
+    send: function() {
+      if (!/\S/.test(this.newMsg)) return;
+      socket.emit('chatMessage', {
+        username: this.username,
+        roomId: this.roomId,
+        msg: this.newMsg
+      });
+      this.newMsg = "";
+    },
+    formatMessage: function(username, gravatar, msg, isSelf = false) {
+      const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
+      return `
+        <div class="message-container row valign-wrapper">
+          <div class="col s2 avatar">
+            <img
+              src="${gravatar}"
+              title="${username}"
+              class="circle reponsive-img avatar-img"
+            >
+          </div>
+          <div class="col s10">
+            <div class="card-panel ${colour} lighten-5 z-depth-1 message">
+              <span>
+                ${emojione.toImage(msg)}
+              </span>
             </div>
           </div>
-        `;
-      },
-      displayMessage: function(message) {
-        this.chatContent += message;
-        // Auto scroll to the bottom
-        const messages = document.getElementById('chat-messages');
-        setTimeout(() => messages.scrollTop = messages.scrollHeight, 100);
-      }
+        </div>
+      `;
     },
-    render: function (h) {
-      const chatContent = this.chatContent;
+    displayMessage: function(message) {
+      this.chatContent += message;
+      // Auto scroll to the bottom
+      const messages = document.getElementById('chat-messages');
+      setTimeout(() => messages.scrollTop = messages.scrollHeight, 100);
+    }
+  },
+  render: function (h) {
+    const chatContent = this.chatContent;
 
-      return h('div', {
-        class: {
-          'flix-sidebar': true,
-          'chat-active': false
-        }
+    return h('div', {
+      class: {
+        'flix-sidebar': true,
+        'chat-active': false
+      }
+    }, [
+      // Chat box
+      h('div', {
+        attrs: {
+          id: 'message-area'
+        },
+        class: { row: true }
       }, [
-        // Chat box
         h('div', {
-          attrs: {
-            id: 'message-area'
-          },
-          class: { row: true }
+          class: { col: true, s12: true }
         }, [
           h('div', {
-            class: { col: true, s12: true }
+            class: { card: true, horizontal: true }
           }, [
             h('div', {
-              class: { card: true, horizontal: true }
-            }, [
-              h('div', {
-                attrs: {
-                  id: 'chat-messages'
-                },
-                class: { 'card-content': true },
-                domProps: { innerHTML: chatContent }
-              })
-            ])
-          ])
-        ]),
-        // Send box
-        h('div', {
-          attrs: {
-            id: 'input-container'
-          },
-          class: { row: true }
-        }, [
-          // Input box
-          h('div', {
-            class: {
-              'input-field': true,
-              col: true,
-              s9: true
-            }
-          }, [
-            h('input', {
               attrs: {
-                id: 'message-box'
+                id: 'chat-messages'
               },
-              domProps: {
-                value: this.newMsg,
-                placeholder: 'Enter message here'
-              },
-              on: {
-                input: e => this.onInput(e),
-                keyup: e => this.onKeyUp(e)
-              }
+              class: { 'card-content': true },
+              domProps: { innerHTML: chatContent }
             })
-          ]),
-          // Send button
-          h('div', {
-            class: {
-              'input-field': true,
-              col: true,
-              s3: true
-            }
-          }, [
-            h('button', {
-              class: {
-                btn: true
-              },
-              on: {
-                click: () => this.send()
-              }
-            }, 'Send')
           ])
         ])
+      ]),
+      // Send box
+      h('div', {
+        attrs: {
+          id: 'input-container'
+        },
+        class: { row: true }
+      }, [
+        // Input box
+        h('div', {
+          class: {
+            'input-field': true,
+            col: true,
+            s9: true
+          }
+        }, [
+          h('input', {
+            attrs: {
+              id: 'message-box'
+            },
+            domProps: {
+              value: this.newMsg,
+              placeholder: 'Enter message here'
+            },
+            on: {
+              input: e => this.onInput(e),
+              keyup: e => this.onKeyUp(e)
+            }
+          })
+        ]),
+        // Send button
+        h('div', {
+          class: {
+            'input-field': true,
+            col: true,
+            s3: true
+          }
+        }, [
+          h('button', {
+            class: {
+              btn: true
+            },
+            on: {
+              click: () => this.send()
+            }
+          }, 'Send')
+        ])
       ])
-    }
-  });
-}
+    ])
+  }
+});
+
+chrome.storage.local.get(null, results => {
+  const tabId = results['flix-tabId'];
+  const roomId = results['flix-roomId'];
+  const username = results['flix-username'];
+
+  // Have not joined a shannel yet
+  if (tabId === -1) return;
+
+  // Check if watching a netflix show
+  if (location.href.startsWith('https://www.netflix.com/watch/')) {
+    chrome.runtime.sendMessage({ message: 'getTabId' }, function(response) {
+      // If current tab is same as original tab
+      if (tabId === response.tabId) {
+        joinChat(username, roomId);
+        toggleChat(true);
+      }
+    });
+  }
+});
+
+// COMMAND FUNCTIONS
 
 function toggleChat(show) {
   waitTillVisible('.flix-sidebar', 10000).then(() => {
@@ -189,15 +210,28 @@ function toggleChat(show) {
   }, () => console.log('Could not create chat in time.'));
 }
 
+function joinChat(username, roomId) {
+  vue.username = username;
+  vue.roomId = roomId;
+  vue.chatContent = '';
+  socket.connect();
+
+  // Join specified room id
+  socket.emit('join', { username, roomId });
+}
+
 function leaveChat() {
   // TODO: Implement clear chat
-  username = "";
-  roomId = "";
+  vue.username = "";
+  vue.roomId = "";
+  vue.chatContent = "";
   socket.emit('leave');
+  socket.disconnect();
 }
 
 // Handles user's controls and broadcasts them to the room
-function buttonHandler(type, socket, username, roomId) {
+function buttonHandler(type) {
+  const { username, roomId } = vue;
   const seeker = document.querySelector('.scrubber-head');
   const currTimestamp = seeker.getAttribute('aria-valuetext').split(' ')[0];
   switch (type.toLowerCase()) {
@@ -243,15 +277,15 @@ function commandHandler(data) {
 }
 
 // Add event listeners to control panel
-function addButtonListeners(socket, username, roomId) {
+function addButtonListeners() {
   waitTillVisible('.PlayerControls--button-control-row', 100000).then(() => {
     const btnControl = document.querySelector('.PlayerControls--button-control-row');
     const buttons = btnControl.querySelectorAll('button');
     const ppButton = buttons[0];
     const track = document.querySelector('.scrubber-bar');
 
-    ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label'), socket, username, roomId));
-    track.addEventListener('click', () => buttonHandler('seek', socket, username, roomId));
+    ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label')));
+    track.addEventListener('click', () => buttonHandler('seek'));
   }, () => console.log('Could not get buttons on time'));
 }
 
@@ -324,12 +358,11 @@ function seek(factor) {
 
 // Listen to incoming messages from popup.html
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  console.log(sender.tab.id)
   switch (request.command) {
     case 'create':
     case 'join':
-      username = request.params.username;
-      roomId = request.params.roomId;
-      createChat();
+      joinChat(request.params.username, request.params.roomId);
       break;
     case 'toggleChat':
       sendResponse({response: "toggled chat"});

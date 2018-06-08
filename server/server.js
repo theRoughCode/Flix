@@ -13,7 +13,7 @@ const rooms = {
 };
 
 app.get('/', function(req, res){
-  res.send('I love bacon');
+  res.send(`Listening on port ${PORT}`);
 });
 
 io.on('connection', function(socket){
@@ -22,16 +22,17 @@ io.on('connection', function(socket){
     roomId: ""
   };
 
-  socket.emit('roomId', { id: socket.id });
-
   // Add room to room list
-  socket.on('create', function({ id, showId, owner, theme }) {
+  socket.on('create', function({ showId, owner, theme }) {
+    const id = generateRoomId();
     rooms[id] = { owner, theme, showId };
+    socket.emit('createResponse', { id });
   });
 
   socket.on('join', function({ username, roomId }) {
     const room = rooms[roomId];
     user.name = username;
+    console.log(username, roomId)
 
     if (room == null) {
       socket.emit('joinResponse', {});
@@ -49,19 +50,19 @@ io.on('connection', function(socket){
 
   socket.on('chatMessage', function(data){
     const { username, roomId, msg } = data;
+    if (roomId == null) return;
+    console.log(roomId)
+    console.log(rooms[roomId])
     const gravatar = getGravatarURL(username, rooms[roomId].theme);
     socket.to(roomId).emit('chatMessage', { username, gravatar, msg });
     socket.emit('userMessage', { gravatar, msg });
   });
   socket.on('leave', function() {
+    // TODO: Remove room from map if noone left
     socket.leave(user.roomId);
       sendStatus(socket, user.roomId, `${user.name} left the room.`);
       sendStatusSelf(socket, 'You left the room.');
   });
-  // socket.on('disconnect', function(){
-  //   sendStatus(socket, user.roomId, `${user.name} left the room.`);
-  //   sendStatusSelf(socket, 'You left the room.');
-  // });
   socket.on('play', function({ username, roomId }) {
     socket.to(roomId).emit('command', { command: 'play' });
     sendStatus(socket, roomId, `Video played by ${username}.`);
@@ -94,6 +95,14 @@ function sendStatus(socket, room, status) {
 // Send status to self
 function sendStatusSelf(socket, status) {
   socket.emit('statusSelf', { status });
+}
+
+// Generate room id
+function generateRoomId() {
+  while (true) {
+    const id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    if (!rooms.hasOwnProperty(id)) return id;
+  }
 }
 
 // Hash username
