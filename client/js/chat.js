@@ -1,6 +1,6 @@
 emojione.imagePathPNG = chrome.extension.getURL("img/emojione-assets/png/32/");
-const DEV = true;
-const URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.appspot.com/";
+const DEV = false;
+const URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.herokuapp.com/";
 
 // ON LOAD
 const socket = io.connect(URL);

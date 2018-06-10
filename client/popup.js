@@ -1,5 +1,5 @@
-const DEV = true;
-const SERVER_URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.appspot.com/";
+const DEV = false;
+const SERVER_URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.herokuapp.com/";
 
 // States
 const STATES = {
