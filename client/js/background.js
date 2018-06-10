@@ -14,20 +14,27 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     case 'getTabId':
       sendResponse({ tabId: sender.tab.id });
       break;
+    case 'resetStorage':
+      resetStorage();
+      break;
+    default:
+      console.log(request);
   }
 });
 
 // Listen to tab close
 chrome.tabs.onRemoved.addListener(function(tabId, info) {
   chrome.storage.local.get('flix-tabId', result => {
-    if (result['flix-tabId'] === tabId) {
-      chrome.storage.local.remove([
-        'flix-tabId',
-        'flix-username',
-        'flix-roomId',
-        'flix-toggle',
-        'flix-state'
-      ]);
-    }
+    if (result['flix-tabId'] === tabId) resetStorage();
   });
 });
+
+function resetStorage() {
+  chrome.storage.local.remove([
+    'flix-tabId',
+    'flix-username',
+    'flix-roomId',
+    'flix-toggle',
+    'flix-state'
+  ]);
+}

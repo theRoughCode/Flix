@@ -24,6 +24,7 @@ const vue = new Vue({
     const self = this;
 
     // Receive incoming message
+    // TODO: Add unread count to document title
     socket.on('chatMessage', function (data) {
       const { msg, username, gravatar } = data;
       self.displayMessage(self.formatMessage(username, gravatar, msg));
@@ -48,6 +49,19 @@ const vue = new Vue({
 
     // Add button listeners to control panel
     addButtonListeners();
+
+    // When end credits show, control buttons disappear and button listeners
+    // are removed. We want to listen for if the user click back into the show
+    // to re-add the button listeners.
+    $(window).mouseup(() => {
+      let controls = document.querySelector('.controls');
+      if (controls == null) {
+        setTimeout(() => {
+          controls = document.querySelector('.controls');
+          if (controls != null) addButtonListeners();
+        }, 700);
+      }
+    });
   },
   methods: {
     onInput: function(e) {
@@ -67,6 +81,9 @@ const vue = new Vue({
     },
     formatMessage: function(username, gravatar, msg, isSelf = false) {
       // TODO: Consolidate messages if same user speaks
+      // TODO: Get better emoji pack
+      // TODO: Put username above message
+      // TODO: Show someone is typing
       const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
       return `
         <div class="message-container row valign-wrapper">
@@ -217,6 +234,7 @@ function joinChat(username, roomId, isHost) {
   vue.roomId = roomId;
   vue.chatContent = '';
   socket.connect();
+  $('#message-box').prop('disabled', false);
 
   // Join specified room id
   socket.emit('join', { username, roomId, isHost });
@@ -224,14 +242,13 @@ function joinChat(username, roomId, isHost) {
 
 function leaveChat() {
   socket.emit('leave', { username: vue.username, roomId: vue.roomId });
-  vue.username = "";
-  vue.roomId = "";
-  vue.chatContent = "";
+  $('#message-box').prop('disabled', true);
+  chrome.runtime.sendMessage({ message: 'resetStorage' });
   socket.disconnect();
 }
 
 // Handles user's controls and broadcasts them to the room
-function buttonHandler(type) {
+function buttonHandler(type, e) {
   const { username, roomId } = vue;
   const seeker = document.querySelector('.scrubber-head');
   const currTimestamp = seeker.getAttribute('aria-valuetext').split(' ')[0];
@@ -243,9 +260,8 @@ function buttonHandler(type) {
       socket.emit('pause', { username, roomId, time: currTimestamp });
       break;
     case 'seek':
-      const seekValue = seeker.getAttribute('aria-valuenow');
-      const seekMax = seeker.getAttribute('aria-valuemax');
-      const factor = seekValue / seekMax;
+      const track = document.querySelector('.progress-control');
+      const factor = e.offsetX / track.offsetWidth;
       socket.emit('seek', { username, roomId, time: currTimestamp, factor });
       break;
     default:
@@ -272,7 +288,6 @@ function commandHandler(data) {
         .then(() => seek(factor));
       break;
     case 'closeRoom':
-      toggleChat(false);
       leaveChat();
       break;
     default:
@@ -282,15 +297,16 @@ function commandHandler(data) {
 }
 
 // Add event listeners to control panel
+// TODO: Prevent event handler from triggering when remote playing
 function addButtonListeners() {
   waitTillVisible('.PlayerControls--button-control-row', 100000).then(() => {
     const btnControl = document.querySelector('.PlayerControls--button-control-row');
     const buttons = btnControl.querySelectorAll('button');
     const ppButton = buttons[0];
-    const track = document.querySelector('.scrubber-bar');
+    const track = document.querySelector('.progress-control');
 
     ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label')));
-    track.addEventListener('click', () => buttonHandler('seek'));
+    track.addEventListener('click', e => buttonHandler('seek', e));
   }, () => console.log('Could not get buttons on time'));
 }
 
@@ -323,21 +339,23 @@ function showControls() {
 
 // Move mouse to show scrubber
 function showScrubber() {
-  const scrubber = document.querySelector('.scrubber-bar');
+  const scrubber = document.querySelector('.progress-control');
   scrubber.dispatchEvent(new MouseEvent('mousemove', {
     bubbles: true,
     currentTarget: scrubber
   }));
-  return waitTillVisible('.scrubber-bar');
+  return waitTillVisible('.progress-control');
 }
 
 // Click on scrubber to seek
 function seek(factor) {
-  const track = document.querySelector('.scrubber-bar');
+  const scrubber = document.querySelector('.scrubber-bar');
+  const track = document.querySelector('.progress-control'); // Use this because scrubber's pos is inconsistent
+  const trackBoundingRect = track.getBoundingClientRect(); // Need this to get absolute position of element
   const offsetX = Math.round(track.offsetWidth * factor);
   const offsetY = Math.round(track.offsetHeight / 2);
-  const pageX = track.offsetLeft + offsetX;
-  const pageY = track.offsetTop + offsetY;
+  const pageX = Math.round(trackBoundingRect.left) + offsetX;
+  const pageY = Math.round(trackBoundingRect.top) + offsetY;
   const screenX = pageX - window.scrollX;
   const screenY = pageY - window.scrollY;
   const options = {
@@ -349,16 +367,17 @@ function seek(factor) {
     offsetY,
     pageX,
     pageY,
-    currentTarget: track,
+    srcElement: scrubber,
+    toElement: scrubber,
     bubbles: true,
     button: 0
   };
   const mouseDownEvent = new MouseEvent('mousedown', options);
   const mouseUpEvent = new MouseEvent('mouseup', options);
   const mouseOutEvent = new MouseEvent('mouseout', options);
-  track.dispatchEvent(mouseDownEvent);
-  track.dispatchEvent(mouseUpEvent);
-  track.dispatchEvent(mouseOutEvent);
+  scrubber.dispatchEvent(mouseDownEvent);
+  scrubber.dispatchEvent(mouseUpEvent);
+  scrubber.dispatchEvent(mouseOutEvent);
 }
 
 // Listen to incoming messages from popup.html

@@ -29,6 +29,7 @@ io.on('connection', function(socket){
     socket.emit('createResponse', { id });
   });
 
+  // TODO: Set status of playback from host
   socket.on('join', function({ username, roomId, isHost }) {
     const room = rooms[roomId];
     if (room == null) {
@@ -54,6 +55,8 @@ io.on('connection', function(socket){
   socket.on('chatMessage', function(data){
     const { username, roomId, msg } = data;
     if (roomId == null) return;
+    if (!rooms[roomId]) return;
+    // TODO: When host refreshes page, dont let host reenter
     const gravatar = getGravatarURL(username, rooms[roomId].theme);
     socket.to(roomId).emit('chatMessage', { username, gravatar, msg });
     socket.emit('userMessage', { gravatar, msg });
@@ -61,6 +64,8 @@ io.on('connection', function(socket){
   // On leave room button click
   socket.on('leave', function({ username, roomId }) {
     socket.leave(roomId);
+    // TODO: Fix when host leaves
+    if (!rooms[roomId]) return;
     // Host left
     if (socket.id === rooms[roomId].hostId) {
       sendStatus(socket, roomId, `${username} (the host) left the room.  This room will be closed.`);
