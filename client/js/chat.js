@@ -92,7 +92,6 @@ const vue = new Vue({
     formatMessage: function(username, gravatar, msg, isSelf = false) {
       // TODO: Consolidate messages if same user speaks
       // TODO: Get better emoji pack
-      // TODO: Put username above message
       // TODO: Show someone is typing
       const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
       return `
@@ -105,10 +104,15 @@ const vue = new Vue({
             >
           </div>
           <div class="col s10">
-            <div class="card-panel ${colour} lighten-5 z-depth-1 message">
-              <span>
-                ${emojione.toImage(msg)}
-              </span>
+            <div>
+              <div class="message-name-container">
+                <span class="message-name">${username}</span>
+              </div>
+              <div class="card-panel ${colour} lighten-5 z-depth-1 message">
+                <span>
+                  ${emojione.toImage(msg)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
