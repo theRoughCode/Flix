@@ -3,11 +3,8 @@ const SERVER_URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.appspo
 
 // States
 const STATES = {
-  DEFAULT: 1,
-  CREATE_FORM: 2,
-  JOIN_FORM: 3,
-  POST_CREATE: 4,
-  POST_JOIN: 5
+  POST_CREATE: 1,
+  POST_JOIN: 2
 };
 Object.freeze(STATES);
 
@@ -20,7 +17,8 @@ const USER = {
 };
 
 // LOCAL STORAGE
-// keys: state , toggle, roomId, tabId, username
+// keys: state, toggle, roomId, tabId, username
+const storageKeys = ['state', 'toggle', 'roomId', 'tabId', 'username'];
 const nullKeys = {
   roomId: '',
   tabId: -1,
@@ -60,21 +58,16 @@ function retrieveKeys(keys, callback) {
 function setState(state) {
   store('state', state);
 }
-// Reset key to default
-function resetKey(key) {
-  store(key, nullKeys[key]);
+function resetState() {
+  deleteKeys(['state']);
 }
-// Initialize session storage
-function initializeStorage() {
-  setState(STATES.DEFAULT);
+// Remove keys from local storage
+function deleteKeys(keys) {
+  chrome.storage.local.remove(keys.map(k => `flix-${k}`));
 }
 // Reset local storage
 function resetStorage() {
-  setState(STATES.DEFAULT);
-  store('toggle', false);
-  store('roomId', USER.hostId);
-  resetKey('tabId');
-  resetKey('username');
+  deleteKeys(storageKeys);
 }
 
 
@@ -171,10 +164,6 @@ function open(url, callback) {
 // Set up popup
 function setView(state) {
   switch (state) {
-    case STATES.DEFAULT:
-      $('.choose-container').show(100);
-      $('.room-form').hide();
-      $('#toggle-chat').prop('checked', false);
     case STATES.POST_CREATE:
       $('.choose-container').hide();
       $('.room-form').show();
@@ -185,6 +174,10 @@ function setView(state) {
       $('.room-form').show();
       $('.post-join-view').show();
       break;
+    default:
+      $('.choose-container').show(100);
+      $('.room-form').hide();
+      $('#toggle-chat').prop('checked', false);
   }
 }
 
@@ -216,7 +209,7 @@ function addButtonListeners(tabs) {
     } else {
       $(".form-container").hide();
       displayError(1);
-      setState(STATES.DEFAULT);
+      resetState();
     }
   });
   joinRoomBtn.addEventListener('click', function () {

@@ -43,7 +43,6 @@ io.on('connection', function(socket){
     } else {
       socket.emit('joinResponse', { showId: room.showId });
       // If there is an existing socket
-      // TODO: Disable user from sending chat messages to that chat
       if (user.roomId.length) socket.leave(user.roomId);
       user.roomId = roomId;
       socket.join(roomId);
@@ -59,6 +58,7 @@ io.on('connection', function(socket){
     socket.to(roomId).emit('chatMessage', { username, gravatar, msg });
     socket.emit('userMessage', { gravatar, msg });
   });
+  // On leave room button click
   socket.on('leave', function({ username, roomId }) {
     socket.leave(roomId);
     // Host left
@@ -70,6 +70,18 @@ io.on('connection', function(socket){
     } else {
       sendStatus(socket, roomId, `${username} left the room.`);
       sendStatusSelf(socket, 'You left the room.');
+    }
+  });
+  // On close tab.  Client socket has been disconnected completely.
+  socket.on('disconnect', function() {
+    if (!rooms.hasOwnProperty(user.roomId)) return;
+    // Host left
+    if (socket.id === rooms[user.roomId].hostId) {
+      sendStatus(socket, user.roomId, `${user.name} (the host) left the room.  This room will be closed.`);
+      socket.to(user.roomId).emit('command', { command: 'closeRoom' });
+      delete rooms[user.roomId];
+    } else {
+      sendStatus(socket, user.roomId, `${user.name} left the room.`);
     }
   });
   socket.on('play', function({ username, roomId }) {

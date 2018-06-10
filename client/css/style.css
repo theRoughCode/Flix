@@ -34,38 +34,31 @@
 }
 
 .message-container {
-  margin-top: 10px;
-}
-
-#input-container {
-  width: 100%;
-  padding-left: 10px;
-  padding-right: 10px;
-  margin-bottom: 20px;
-  min-height: 60px;
-}
-
-#message-box {
-  color: white;
+  margin-top: 0px;
+  margin-bottom: 5px;
 }
 
 .avatar {
   padding-left: 0 !important;
   padding-right: 0 !important;
+  display: flex;
 }
 
 .avatar-img {
-  width: 100% !important;
+  width: auto !important;
+  height: 50px;
+  margin: auto;
 }
 
 .message {
   margin-bottom: 0;
   word-wrap: break-word;
-  padding: 18px !important;
+  padding: 10px 13px !important;
+  font-size: 14px;
 }
 
 .message img {
-  height: 20px;
+  height: 17px;
   vertical-align: text-bottom;
   margin-left: 5px;
   margin-right: 5px;
@@ -78,6 +71,18 @@
 
 .status-self {
   color: rgb(43, 187, 173);
+}
+
+#input-container {
+  width: 100%;
+  padding-left: 10px;
+  padding-right: 10px;
+  margin-bottom: 20px;
+  min-height: 60px;
+}
+
+#message-box {
+  color: white;
 }
 
 button:focus {

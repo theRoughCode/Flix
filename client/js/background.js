@@ -17,7 +17,17 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   }
 });
 
-
-// TODO: Listen for tab close and refresh => leave room
-// TODO: Generate new roomId if you leave a room
-// TODO: listen for on refresh and rejoin room
+// Listen to tab close
+chrome.tabs.onRemoved.addListener(function(tabId, info) {
+  chrome.storage.local.get('flix-tabId', result => {
+    if (result['flix-tabId'] === tabId) {
+      chrome.storage.local.remove([
+        'flix-tabId',
+        'flix-username',
+        'flix-roomId',
+        'flix-toggle',
+        'flix-state'
+      ]);
+    }
+  });
+});

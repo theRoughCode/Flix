@@ -66,6 +66,7 @@ const vue = new Vue({
       this.newMsg = "";
     },
     formatMessage: function(username, gravatar, msg, isSelf = false) {
+      // TODO: Consolidate messages if same user speaks
       const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
       return `
         <div class="message-container row valign-wrapper">
