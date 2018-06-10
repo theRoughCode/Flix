@@ -5,6 +5,7 @@ const URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.herokuapp.com
 // ON LOAD
 const socket = io.connect(URL);
 
+const netflixTitle = document.title;
 const div = document.createElement('div');
 div.id = 'app';
 const app = document.querySelector('.sizing-wrapper');
@@ -18,16 +19,19 @@ const vue = new Vue({
     username: '',
     roomId: '',
     chatContent: '', // A running list of chat messages displayed on the screen
-    joined: false, // True if email and username have been filled in
+    joined: false, // True if email and username have been filled in,
+    unreadCount: 0  // Keeps track of how many unread messages there are
   },
   created: function() {
     const self = this;
 
     // Receive incoming message
-    // TODO: Add unread count to document title
     socket.on('chatMessage', function (data) {
       const { msg, username, gravatar } = data;
       self.displayMessage(self.formatMessage(username, gravatar, msg));
+      if (document.hasFocus()) self.unreadCount = 0;
+      else self.unreadCount++;
+      setUnreadCount(self.unreadCount);
     });
 
     // Receiver own message
@@ -49,6 +53,12 @@ const vue = new Vue({
 
     // Add button listeners to control panel
     addButtonListeners();
+
+    // Listen for document focus
+    $(window).focus(() => {
+      self.unreadCount = 0;
+      setUnreadCount(0);
+    });
 
     // When end credits show, control buttons disappear and button listeners
     // are removed. We want to listen for if the user click back into the show
@@ -194,6 +204,7 @@ const vue = new Vue({
   }
 });
 
+// Check if previous session was started in this tab.  If so, open chat.
 chrome.storage.local.get(null, results => {
   const tabId = results['flix-tabId'];
   const roomId = results['flix-roomId'];
@@ -379,6 +390,15 @@ function seek(factor) {
   scrubber.dispatchEvent(mouseUpEvent);
   scrubber.dispatchEvent(mouseOutEvent);
 }
+
+function setUnreadCount(count) {
+  if (count > 0) {
+    document.title = `(${count}) ${netflixTitle}`;
+  } else { // reset title
+    document.title = netflixTitle;
+  }
+}
+
 
 // Listen to incoming messages from popup.html
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
