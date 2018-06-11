@@ -22,6 +22,7 @@
 #message-area {
   flex: 1;
   width: 100%;
+  margin-bottom: 0;
 }
 
 #chat-messages {
@@ -81,12 +82,29 @@
   color: rgb(43, 187, 173);
 }
 
+.typing-status {
+  height: 20px;
+}
+
+.typing-status span {
+  padding-left: 10px;
+  color: #929995;
+}
+
 #input-container {
   width: 100%;
   padding-left: 10px;
   padding-right: 10px;
   margin-bottom: 20px;
   min-height: 60px;
+}
+
+.input-field {
+  margin-top: 0;
+}
+
+.input-field button {
+  margin-top: 5px;
 }
 
 #message-box {

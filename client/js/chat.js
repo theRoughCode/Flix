@@ -1,11 +1,12 @@
 emojione.imagePathPNG = chrome.extension.getURL("img/emojione-assets/png/32/");
-const DEV = false;
+const DEV = true;
 const URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.herokuapp.com/";
 
 // ON LOAD
 const socket = io.connect(URL);
-
 const netflixTitle = document.title;
+const typingMaxWait = 1000;
+
 const div = document.createElement('div');
 div.id = 'app';
 const app = document.querySelector('.sizing-wrapper');
@@ -20,7 +21,8 @@ const vue = new Vue({
     roomId: '',
     chatContent: '', // A running list of chat messages displayed on the screen
     joined: false, // True if email and username have been filled in,
-    unreadCount: 0  // Keeps track of how many unread messages there are
+    unreadCount: 0,  // Keeps track of how many unread messages there are
+    typingTimer: null // Timer counting down to turn off typing status
   },
   created: function() {
     const self = this;
@@ -51,6 +53,11 @@ const vue = new Vue({
     // Handle incoming controls
     socket.on('command', commandHandler);
 
+    // Handling incoming typing status
+    socket.on('typingStatus', function({ message }) {
+      $(".typing-status span").text(message);
+    });
+
     // Add button listeners to control panel
     addButtonListeners();
 
@@ -76,6 +83,21 @@ const vue = new Vue({
   methods: {
     onInput: function(e) {
       this.newMsg = e.target.value;
+      // Send typing status
+      if (this.typingTimer == null) socket.emit('typingStatus', {
+        isTyping: true,
+        roomId: this.roomId,
+        username: this.username
+      });
+      else clearTimeout(this.typingTimer);  // Reset typing timer
+      this.typingTimer = setTimeout(() => {
+        socket.emit('typingStatus', {
+          isTyping: false,
+          roomId: this.roomId,
+          username: this.username
+        });
+        this.typingTimer = null;
+      }, typingMaxWait);
     },
     onKeyUp: function(e) {
       if (e.keyCode === 13) this.send();
@@ -145,6 +167,9 @@ const vue = new Vue({
           class: { col: true, s12: true }
         }, [
           h('div', {
+            style: {
+              marginBottom: '8px'
+            },
             class: { card: true, horizontal: true }
           }, [
             h('div', {
@@ -155,7 +180,10 @@ const vue = new Vue({
               domProps: { innerHTML: chatContent }
             })
           ])
-        ])
+        ]),
+        h('div', {
+          class: { col: true, s12: true, 'typing-status': true }
+        }, [ h('span') ])
       ]),
       // Send box
       h('div', {

@@ -8,7 +8,8 @@ const rooms = {
   '1': {
     showId: '70276688',
     theme: 'robohash',
-    hostId: '1'
+    hostId: '1',
+    typing: {}
   }
 };
 
@@ -25,7 +26,12 @@ io.on('connection', function(socket){
   // Add room to room list
   socket.on('create', function({ showId, theme }) {
     const id = generateRoomId();
-    rooms[id] = { theme, showId, hostId: socket.id };
+    rooms[id] = {
+      theme,
+      showId,
+      hostId: socket.id,
+      typing: {}
+    };
     socket.emit('createResponse', { id });
   });
 
@@ -103,6 +109,29 @@ io.on('connection', function(socket){
     socket.to(roomId).emit('command', { command: 'seek', factor });
     sendStatus(socket, roomId, `${username} jumped to ${time}.`);
     sendStatusSelf(socket, `You jumped to ${time}.`);
+  });
+  socket.on('typingStatus', function({ isTyping, roomId, username }) {
+    const room = rooms[roomId];
+    if (room == null) return;
+
+    if (isTyping) room.typing[username] = true;
+    else delete room.typing[username];
+
+    let message = "";
+    const currTypingCount = Object.keys(room.typing).length;
+    switch (currTypingCount) {
+      case 0:
+        message = '';
+        break;
+      case 1:
+        const username = Object.keys(room.typing)[0];
+        message = `${username} is typing...`;
+        break;
+      default:
+        message = 'Several people are typing...';
+    }
+
+    socket.to(roomId).emit('typingStatus', { message });
   });
   socket.on('log', function({ msg }) {
     console.log(msg);
