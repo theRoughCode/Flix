@@ -143,8 +143,14 @@ const vue = new Vue({
       // TODO: Consolidate messages if same user speaks
       // TODO: Get better emoji pack
       const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
+      const isSelfClass = isSelf ? ' is-self' : '';
+      const messageNameDiv = isSelf ? '' : `
+        <div class="message-name-container">
+          <span class="message-name">${username}</span>
+        </div>
+      `;
       return `
-        <div class="message-container row valign-wrapper">
+        <div class="message-container row valign-wrapper${isSelfClass}">
           <div class="col s2 avatar">
             <img
               src="${gravatar}"
@@ -154,9 +160,7 @@ const vue = new Vue({
           </div>
           <div class="col s10">
             <div>
-              <div class="message-name-container">
-                <span class="message-name">${username}</span>
-              </div>
+              ${messageNameDiv}
               <div class="card-panel ${colour} lighten-5 z-depth-1 message">
                 <span>
                   ${emojione.toImage(msg)}

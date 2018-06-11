@@ -39,6 +39,11 @@
   margin-bottom: 10px;
 }
 
+.is-self {
+  display: flex;
+  flex-direction: row-reverse;
+}
+
 .avatar {
   padding-left: 0 !important;
   padding-right: 0 !important;
