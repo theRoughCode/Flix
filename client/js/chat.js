@@ -1,11 +1,12 @@
 emojione.imagePathPNG = chrome.extension.getURL("img/emojione-assets/png/32/");
-const DEV = true;
+const DEV = false;
 const URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.herokuapp.com/";
 
 // ON LOAD
 const socket = io.connect(URL);
 const netflixTitle = document.title;
 const typingMaxWait = 1000;
+let isReceivingAction = false;
 
 const div = document.createElement('div');
 div.id = 'app';
@@ -114,7 +115,6 @@ const vue = new Vue({
     formatMessage: function(username, gravatar, msg, isSelf = false) {
       // TODO: Consolidate messages if same user speaks
       // TODO: Get better emoji pack
-      // TODO: Show someone is typing
       const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
       return `
         <div class="message-container row valign-wrapper">
@@ -292,6 +292,8 @@ function leaveChat() {
 
 // Handles user's controls and broadcasts them to the room
 function buttonHandler(type, e) {
+  // Don't trigger events if you are receiving them (prevent loop)
+  if (isReceivingAction) return;
   const { username, roomId } = vue;
   const seeker = document.querySelector('.scrubber-head');
   const currTimestamp = seeker.getAttribute('aria-valuetext').split(' ')[0];
@@ -321,11 +323,14 @@ function commandHandler(data) {
     case 'pause':
       const btn = document.querySelector('.PlayerControls--button-control-row').querySelector('button');
       if (command === btn.getAttribute('aria-label').toLowerCase()) {
+        isReceivingAction = true;
         btn.click();
+        isReceivingAction = false;
       } else console.log('failed', command)
       break;
     case 'seek':
       const { factor } = data;
+      isReceivingAction = true;
       showControls()
         .then(showScrubber)
         .then(() => seek(factor));
@@ -340,7 +345,6 @@ function commandHandler(data) {
 }
 
 // Add event listeners to control panel
-// TODO: Prevent event handler from triggering when remote playing
 function addButtonListeners() {
   waitTillVisible('.PlayerControls--button-control-row', 100000).then(() => {
     const btnControl = document.querySelector('.PlayerControls--button-control-row');
@@ -421,6 +425,8 @@ function seek(factor) {
   scrubber.dispatchEvent(mouseDownEvent);
   scrubber.dispatchEvent(mouseUpEvent);
   scrubber.dispatchEvent(mouseOutEvent);
+
+  isReceivingAction = false;
 }
 
 function setUnreadCount(count) {
