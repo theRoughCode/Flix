@@ -1,6 +1,6 @@
 {
   "name": "Flix",
-  "version": "0.0.0.4",
+  "version": "0.0.0.6",
   "description": "Sync Netflix with your buddies!",
   "manifest_version": 2,
   "browser_action": {

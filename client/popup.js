@@ -111,8 +111,7 @@ function sendRuntimeMessage(message, params, callback) {
 
 function createSession(username, iconTheme) {
   const { socket, showId } = USER;
-  socket.emit('create', { showId, theme: iconTheme });
-  socket.on('createResponse', ({ id }) => {
+  socket.emit('create', { showId, theme: iconTheme }, id => {
     USER.roomId = id;
     $("#room-id-text").val(id);
     store('roomId', id);
@@ -122,11 +121,9 @@ function createSession(username, iconTheme) {
   });
 }
 
-// TODO: Bug - invalid room id then valid opens 2 urls
 function joinSession(roomId, username, callback) {
   const { socket } = USER;
-  socket.emit('join', { roomId, username });
-  socket.on('joinResponse', ({ showId }) => {
+  socket.emit('roomCheck', { roomId, username }, showId => {
     if (showId == null) {
       callback(false);
     } else {

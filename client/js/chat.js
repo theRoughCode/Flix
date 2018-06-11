@@ -28,6 +28,13 @@ const vue = new Vue({
   created: function() {
     const self = this;
 
+    // Set playback of video (for guests)
+    socket.on('setPlayback', function({ factor, isPlaying }) {
+      const ppCommand = (isPlaying) ? 'play' : 'pause';
+      ppAction(ppCommand);  // play/pause
+      commandHandler({ command: 'seek', factor }); // seek to playback position
+    });
+
     // Receive incoming message
     socket.on('chatMessage', function (data) {
       const { msg, username, gravatar } = data;
@@ -57,6 +64,26 @@ const vue = new Vue({
     // Handling incoming typing status
     socket.on('typingStatus', function({ message }) {
       $(".typing-status span").text(message);
+    });
+
+    // Handle timestamp querying (only for hosts)
+    socket.on('queryPlayback', ({ responseSocketId }) => {
+      waitTillVisible('.PlayerControls--button-control-row', 100000).then(() => {
+        showControls()
+          .then(() => {
+            const track = document.querySelector('.progress-control');
+            const scrubberHead = document.querySelector('.scrubber-head');
+            const scrubberHeadRadius = scrubberHead.offsetWidth / 2;
+            const currOffset = scrubberHead.offsetLeft + scrubberHeadRadius;
+            const factor = currOffset / track.offsetWidth;
+            console.log(track)
+            console.log(scrubberHead)
+            console.log(scrubberHeadRadius)
+            console.log(scrubberHead.offsetLeft);
+            console.log(currOffset)
+            socket.emit('queryPlaybackResponse', { responseSocketId, factor, roomId: self.roomId });
+          });
+      });
     });
 
     // Add button listeners to control panel
@@ -321,12 +348,7 @@ function commandHandler(data) {
   switch (command) {
     case 'play':
     case 'pause':
-      const btn = document.querySelector('.PlayerControls--button-control-row').querySelector('button');
-      if (command === btn.getAttribute('aria-label').toLowerCase()) {
-        isReceivingAction = true;
-        btn.click();
-        isReceivingAction = false;
-      } else console.log('failed', command)
+      ppAction(command);
       break;
     case 'seek':
       const { factor } = data;
@@ -344,6 +366,16 @@ function commandHandler(data) {
   }
 }
 
+// Fire a play/pause action
+function ppAction(command) {
+  const btn = document.querySelector('.PlayerControls--button-control-row').querySelector('button');
+  if (command === btn.getAttribute('aria-label').toLowerCase()) {
+    isReceivingAction = true;
+    btn.click();
+    isReceivingAction = false;
+  } else console.log('failed', command);
+}
+
 // Add event listeners to control panel
 function addButtonListeners() {
   waitTillVisible('.PlayerControls--button-control-row', 100000).then(() => {
@@ -351,6 +383,9 @@ function addButtonListeners() {
     const buttons = btnControl.querySelectorAll('button');
     const ppButton = buttons[0];
     const track = document.querySelector('.progress-control');
+
+    // Pause show on start
+    ppAction('pause');
 
     ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label')));
     track.addEventListener('click', e => buttonHandler('seek', e));
@@ -429,6 +464,7 @@ function seek(factor) {
   isReceivingAction = false;
 }
 
+// Set the unread message count in title
 function setUnreadCount(count) {
   if (count > 0) {
     document.title = `(${count}) ${netflixTitle}`;

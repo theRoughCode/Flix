@@ -9,6 +9,7 @@ const rooms = {
     showId: '70276688',
     theme: 'robohash',
     hostId: '1',
+    isPlaying: true,
     typing: {}
   }
 };
@@ -24,7 +25,7 @@ io.on('connection', function(socket){
   };
 
   // Add room to room list
-  socket.on('create', function({ showId, theme }) {
+  socket.on('create', function({ showId, theme }, res) {
     const id = generateRoomId();
     rooms[id] = {
       theme,
@@ -32,7 +33,13 @@ io.on('connection', function(socket){
       hostId: socket.id,
       typing: {}
     };
-    socket.emit('createResponse', { id });
+    res(id);
+  });
+
+  socket.on('roomCheck', function({ roomId }, res) {
+    const room = rooms[roomId];
+    if (room == null) res(null);
+    else res(room.showId);
   });
 
   // TODO: Set status of playback from host
@@ -42,20 +49,23 @@ io.on('connection', function(socket){
       console.log(`Invalid room ${roomId} request by ${username}.`);
       return;
     }
-    if (isHost) rooms[roomId].hostId = socket.id;  // set host id if host joined
-    user.name = username;
+    if (isHost) room.hostId = socket.id;  // set host id if host joined
+    else socket.to(room.hostId).emit('queryPlayback', { responseSocketId: socket.id });
 
-    if (room == null) {
-      socket.emit('joinResponse', {});
-    } else {
-      socket.emit('joinResponse', { showId: room.showId });
-      // If there is an existing socket
-      if (user.roomId.length) socket.leave(user.roomId);
-      user.roomId = roomId;
-      socket.join(roomId);
-      sendStatus(socket, roomId, `${username} joined the room!`);
-      sendStatusSelf(socket, 'You joined the room!');
-    }
+    user.name = username;
+    // If there is an existing socket
+    if (user.roomId.length) socket.leave(user.roomId);
+    user.roomId = roomId;
+    socket.join(roomId);
+    sendStatus(socket, roomId, `${username} joined the room!`);
+    sendStatusSelf(socket, 'You joined the room!');
+  });
+
+  // Listen for playback response from host
+  socket.on('queryPlaybackResponse', function({ responseSocketId, factor, roomId }) {
+    console.log(factor);
+    const isPlaying = rooms[roomId].isPlaying;
+    socket.to(responseSocketId).emit('setPlayback', { factor, isPlaying });
   });
 
   socket.on('chatMessage', function(data){
@@ -99,11 +109,13 @@ io.on('connection', function(socket){
     socket.to(roomId).emit('command', { command: 'play' });
     sendStatus(socket, roomId, `Video played by ${username}.`);
     sendStatusSelf(socket, 'You played the video.');
+    rooms[roomId].isPlaying = true;
   });
   socket.on('pause', function({ username, roomId, time }) {
     socket.to(roomId).emit('command', { command: 'pause' });
     sendStatus(socket, roomId, `Video paused by ${username} at ${time}.`);
     sendStatusSelf(socket, `You paused the video at ${time}.`);
+    rooms[roomId].isPlaying = false;
   });
   socket.on('seek', function({ username, roomId, time, factor }) {
     socket.to(roomId).emit('command', { command: 'seek', factor });
