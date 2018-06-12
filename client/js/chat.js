@@ -1,5 +1,5 @@
 emojione.imagePathPNG = chrome.extension.getURL("img/emojione-assets/png/32/");
-const DEV = false;
+const DEV = true;
 const URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.herokuapp.com/";
 
 // ON LOAD
@@ -20,7 +20,7 @@ const vue = new Vue({
     newMsg: '', // Holds new messages to be sent to the server
     username: '',
     roomId: '',
-    chatContent: '', // A running list of chat messages displayed on the screen
+    chatContent: [], // A running list of chat messages displayed on the screen
     joined: false, // True if email and username have been filled in,
     unreadCount: 0,  // Keeps track of how many unread messages there are
     typingTimer: null // Timer counting down to turn off typing status
@@ -38,7 +38,7 @@ const vue = new Vue({
     // Receive incoming message
     socket.on('chatMessage', function (data) {
       const { msg, username, gravatar } = data;
-      self.displayMessage(self.formatMessage(username, gravatar, msg));
+      self.formatMessage(username, gravatar, msg);
       if (document.hasFocus()) self.unreadCount = 0;
       else self.unreadCount++;
       setUnreadCount(self.unreadCount);
@@ -47,15 +47,23 @@ const vue = new Vue({
     // Receiver own message
     socket.on('userMessage', function(data) {
       const { msg, gravatar } = data;
-      self.displayMessage(self.formatMessage(self.username, gravatar, msg, true));
+      self.formatMessage(self.username, gravatar, msg, true)
     });
 
     // Receive incoming statuses
     socket.on('status', function({ status }) {
-      self.displayMessage(`<p class="status">${status}</p>`);
+      self.displayMessage({
+        type: 'p',
+        classes: { status: true },
+        status
+      });
     });
     socket.on('statusSelf', function({ status }) {
-      self.displayMessage(`<p class="status-self">${status}</p>`);
+      self.displayMessage({
+        type: 'p',
+        classes: { 'status-self': true },
+        status
+      });
     });
 
     // Handle incoming controls
@@ -143,43 +151,103 @@ const vue = new Vue({
       // TODO: Consolidate messages if same user speaks
       // TODO: Get better emoji pack
       const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
-      const isSelfClass = isSelf ? ' is-self' : '';
-      const messageNameDiv = isSelf ? '' : `
-        <div class="message-name-container">
-          <span class="message-name">${username}</span>
-        </div>
-      `;
-      return `
-        <div class="message-container row valign-wrapper${isSelfClass}">
-          <div class="col s2 avatar">
-            <img
-              src="${gravatar}"
-              title="${username}"
-              class="circle reponsive-img avatar-img"
-            >
-          </div>
-          <div class="col s10">
-            <div>
-              ${messageNameDiv}
-              <div class="card-panel ${colour} lighten-5 z-depth-1 message">
-                <span>
-                  ${emojione.toImage(msg)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
+      const chatContent = Array.from(this.chatContent);
+      const numMessages = chatContent.length;
+
+      // Consolidate messages if same user
+      if (numMessages > 0 &&
+        chatContent[numMessages - 1].hasOwnProperty('attrs') &&
+        chatContent[numMessages - 1].attrs.name === username) {
+        chatContent[numMessages - 1].messageList.push(
+          `<div class="card-panel ${colour} lighten-5 z-depth-1 message">
+            <span>
+              ${emojione.toImage(msg)}
+            </span>
+          </div>`
+        );
+        return;
+      }
+
+      // New user messaging
+      const classes = {
+        'message-container': true,
+        'row': true,
+        'valign-wrapper': true
+      };
+      const attrs = {
+        name: username
+      };
+      const messageList = [
+        `<div class="card-panel ${colour} lighten-5 z-depth-1 message">
+          <span>
+            ${emojione.toImage(msg)}
+          </span>
+        </div>`
+      ];
+      if (isSelf) {
+        classes['is-self'] = true;
+        messageList.unshift(`<div class="message-name-container">
+            <span class="message-name">${username}</span>
+          </div>`);
+      }
+      this.displayMessage({ type: 'div', classes, attrs, gravatar, messageList });
     },
     displayMessage: function(message) {
-      this.chatContent += message;
+      const chatContent = Array.from(this.chatContent);
+      chatContent.push(message);
+      this.chatContent = chatContent;
       // Auto scroll to the bottom
       const messages = document.getElementById('chat-messages');
       setTimeout(() => messages.scrollTop = messages.scrollHeight, 100);
+    },
+    formatChatContent: function(content, h) {
+      const {
+        type,
+        classes,
+        attrs,
+        gravatar,
+        status,
+        messageList
+      } = content;
+      switch (type) {
+        case 'p':
+          return h(type, {
+            class: classes,
+            attrs,
+            domProps: {
+              innerHTML: status
+            }
+          });
+          break;
+        case 'div':
+          return h(type, {
+            class: classes,
+            attrs
+          }, [
+            h('div', {
+              class: { 'col': true, 's2': true, 'avatar': true }
+            }, [
+              h('img', {
+                class: { 'circle': true, 'responsive-img': true, 'avatar-img':true },
+                attrs: { src: gravatar,  }
+              })
+            ]),
+            h('div', {
+              class: { 'col': true, 's10': true }
+            }, [
+              h('div', {
+                class: { 'message-list': true },
+                domProps: {
+                  innerHTML: messageList.join("\n")
+                }
+              })
+            ])
+          ]);
+      }
     }
   },
   render: function (h) {
-    const chatContent = this.chatContent;
+    const chatContent = Array.from(this.chatContent);
 
     return h('div', {
       class: {
@@ -208,8 +276,7 @@ const vue = new Vue({
                 id: 'chat-messages'
               },
               class: { 'card-content': true },
-              domProps: { innerHTML: chatContent }
-            })
+            }, chatContent.map(content => this.formatChatContent(content, h)))
           ])
         ]),
         h('div', {
@@ -372,6 +439,7 @@ function commandHandler(data) {
 
 // Fire a play/pause action
 function ppAction(command) {
+  // TODO: Undefined player controls
   const btn = document.querySelector('.PlayerControls--button-control-row').querySelector('button');
   if (command === btn.getAttribute('aria-label').toLowerCase()) {
     isReceivingAction = true;
