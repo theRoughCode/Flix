@@ -4,6 +4,8 @@ const io = require('socket.io')(http);
 
 const PORT = process.env.PORT || 3000;
 
+// TODO: messages from others dont send to you if you rejoin
+
 const rooms = {
   '1': {
     showId: '70276688',
@@ -106,12 +108,14 @@ io.on('connection', function(socket){
     }
   });
   socket.on('play', function({ username, roomId }) {
+    if (rooms[roomId] == null) return;
     socket.to(roomId).emit('command', { command: 'play' });
     sendStatus(socket, roomId, `Video played by ${username}.`);
     sendStatusSelf(socket, 'You played the video.');
     rooms[roomId].isPlaying = true;
   });
   socket.on('pause', function({ username, roomId, time }) {
+    if (rooms[roomId] == null) return;
     socket.to(roomId).emit('command', { command: 'pause' });
     sendStatus(socket, roomId, `Video paused by ${username} at ${time}.`);
     sendStatusSelf(socket, `You paused the video at ${time}.`);
@@ -122,6 +126,7 @@ io.on('connection', function(socket){
     sendStatus(socket, roomId, `${username} jumped to ${time}.`);
     sendStatusSelf(socket, `You jumped to ${time}.`);
   });
+  // TODO: Don't count current user
   socket.on('typingStatus', function({ isTyping, roomId, username }) {
     const room = rooms[roomId];
     if (room == null) return;
@@ -186,5 +191,5 @@ function hashString(str) {
 
 // Generate gravtar url
 function getGravatarURL(username, icon) {
-  return `http://www.gravatar.com/avatar/${hashString(username)}?d=${icon}`;
+  return `https://www.gravatar.com/avatar/${hashString(username)}?d=${icon}`;
 }

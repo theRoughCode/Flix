@@ -84,11 +84,6 @@ const vue = new Vue({
             const scrubberHeadRadius = scrubberHead.offsetWidth / 2;
             const currOffset = scrubberHead.offsetLeft + scrubberHeadRadius;
             const factor = currOffset / track.offsetWidth;
-            console.log(track)
-            console.log(scrubberHead)
-            console.log(scrubberHeadRadius)
-            console.log(scrubberHead.offsetLeft);
-            console.log(currOffset)
             socket.emit('queryPlaybackResponse', { responseSocketId, factor, roomId: self.roomId });
           });
       });
@@ -148,7 +143,6 @@ const vue = new Vue({
       this.newMsg = "";
     },
     formatMessage: function(username, gravatar, msg, isSelf = false) {
-      // TODO: Consolidate messages if same user speaks
       // TODO: Get better emoji pack
       const colour = isSelf ? "teal darken-3" : "blue-grey darken-3";
       const chatContent = Array.from(this.chatContent);
@@ -158,13 +152,15 @@ const vue = new Vue({
       if (numMessages > 0 &&
         chatContent[numMessages - 1].hasOwnProperty('attrs') &&
         chatContent[numMessages - 1].attrs.name === username) {
-        chatContent[numMessages - 1].messageList.push(
+        const lastMsg = this.chatContent.pop();
+        lastMsg.messageList.push(
           `<div class="card-panel ${colour} lighten-5 z-depth-1 message">
             <span>
               ${emojione.toImage(msg)}
             </span>
           </div>`
         );
+        this.displayMessage(lastMsg);
         return;
       }
 
@@ -422,6 +418,7 @@ function commandHandler(data) {
       ppAction(command);
       break;
     case 'seek':
+    //TODO: Seeking to beginning sometimes
       const { factor } = data;
       isReceivingAction = true;
       showControls()
