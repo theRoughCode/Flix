@@ -1,5 +1,5 @@
 emojione.imagePathPNG = chrome.extension.getURL("img/emojione-assets/png/32/");
-const DEV = true;
+const DEV = false;
 const URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.herokuapp.com/";
 
 // ON LOAD
@@ -31,8 +31,12 @@ const vue = new Vue({
     // Set playback of video (for guests)
     socket.on('setPlayback', function({ factor, isPlaying }) {
       const ppCommand = (isPlaying) ? 'play' : 'pause';
-      ppAction(ppCommand);  // play/pause
-      commandHandler({ command: 'seek', factor }); // seek to playback position
+      waitTillVisible('.PlayerControls--button-control-row', 20000).then(() => {
+         // play/pause
+        ppAction(ppCommand);
+        // seek to playback position
+        setTimeout(() => commandHandler({ command: 'seek', factor }), 500);
+      });
     });
 
     // Receive incoming message
@@ -355,7 +359,7 @@ chrome.storage.local.get(null, results => {
 // COMMAND FUNCTIONS
 
 function toggleChat(show) {
-  waitTillVisible('.flix-sidebar', 10000).then(() => {
+  waitTillNotNull('.flix-sidebar', 10000).then(() => {
     if (show) {
       $('.sizing-wrapper').addClass('chat-active');
       $('.flix-sidebar').addClass('chat-active');
@@ -466,25 +470,45 @@ function addButtonListeners() {
 
 // Keeps checking to see if element is visible and returns when the element is
 // visible or time runs out
-function waitTillVisible(className, maxWait = 1000, delay = 100) {
+function waitTillVisible(className, maxWait = 5000, delay = 100, mustBeVisible = true) {
   const startTime = Date.now();
 
   return new Promise((resolve, reject) => {
-    setInterval(() => {
+    let intervalId = setInterval(() => {
       const elem = document.querySelector(className);
-      if (elem != null || $(elem).is(':visible')) return resolve();
-      else if (Date.now() - startTime >= maxWait) return reject();
+
+      if (elem != null && (!mustBeVisible || $(className).is(':visible'))) {
+        clearInterval(intervalId);
+        return resolve();
+      } else if (Date.now() - startTime >= maxWait) {
+        clearInterval(intervalId);
+        return reject();
+      }
+      // console.log(`${className} - Null: ${elem != null}, Vis: ${$(className).is(':visible')}, left:${maxWait - Date.now() + startTime}`)
     }, delay);
   });
 }
 
+// A wrapper to turn off default visibility
+function waitTillNotNull(className, maxWait = 5000, delay = 100) {
+  return waitTillVisible(className, maxWait, delay, false)
+}
+
 // Move mouse to show bottom controls
 function showControls() {
-  const bottomControls = document.querySelector('.PlayerControls--bottom-controls.nfp-control-row.bottom-controls');
-  bottomControls.dispatchEvent(new MouseEvent('mousemove', {
-    bubbles: true,
-    currentTarget: bottomControls
-  }));
+  const controls = document.querySelector('.PlayerControls--main-controls');
+  const sidebar = document.querySelector('.flix-sidebar');
+  if (controls == null) {
+    console.log('Count not find controls.')
+  } else {
+    const options = {
+      bubbles: true,
+      relatedTarget: sidebar, // Element from where the mouse came from
+      target: controls  // Element where the mouse moves over
+    };
+
+    controls.dispatchEvent(new MouseEvent('mousemove', options));
+  }
   return waitTillVisible('.PlayerControls--bottom-controls.nfp-control-row.bottom-controls');
 }
 
@@ -495,6 +519,8 @@ function showScrubber() {
     bubbles: true,
     currentTarget: scrubber
   }));
+  // PlayerControls--control-element progress-control PlayerControls--control-element-hidden
+  // PlayerControls--control-element progress-control
   return waitTillVisible('.progress-control');
 }
 
@@ -502,6 +528,18 @@ function showScrubber() {
 function seek(factor) {
   const scrubber = document.querySelector('.scrubber-bar');
   const track = document.querySelector('.progress-control'); // Use this because scrubber's pos is inconsistent
+
+  const startTime = Date.now();
+  const maxWaitTime = 5000;
+  // Wait for track to become active
+  while(Date.now() - startTime < maxWaitTime && track.offsetWidth === 0) {
+    console.log('waiting...');
+  }
+  if (track.offsetWidth === 0) {
+    console.log("Failed to seek.");
+    return;
+  }
+
   const trackBoundingRect = track.getBoundingClientRect(); // Need this to get absolute position of element
   const offsetX = Math.round(track.offsetWidth * factor);
   const offsetY = Math.round(track.offsetHeight / 2);

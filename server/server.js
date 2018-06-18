@@ -65,7 +65,6 @@ io.on('connection', function(socket){
 
   // Listen for playback response from host
   socket.on('queryPlaybackResponse', function({ responseSocketId, factor, roomId }) {
-    console.log(factor);
     const isPlaying = rooms[roomId].isPlaying;
     socket.to(responseSocketId).emit('setPlayback', { factor, isPlaying });
   });
@@ -104,6 +103,10 @@ io.on('connection', function(socket){
       socket.to(user.roomId).emit('command', { command: 'closeRoom' });
       delete rooms[user.roomId];
     } else {
+       // Remove user from room
+      delete rooms[user.roomId].typing[user.name];
+      updateTypingStatus(socket, user.roomId);
+
       sendStatus(socket, user.roomId, `${user.name} left the room.`);
     }
   });
@@ -134,21 +137,7 @@ io.on('connection', function(socket){
     if (isTyping) room.typing[username] = true;
     else delete room.typing[username];
 
-    let message = "";
-    const currTypingCount = Object.keys(room.typing).length;
-    switch (currTypingCount) {
-      case 0:
-        message = '';
-        break;
-      case 1:
-        const username = Object.keys(room.typing)[0];
-        message = `${username} is typing...`;
-        break;
-      default:
-        message = 'Several people are typing...';
-    }
-
-    socket.to(roomId).emit('typingStatus', { message });
+    updateTypingStatus(socket, roomId);
   });
   socket.on('log', function({ msg }) {
     console.log(msg);
@@ -167,6 +156,25 @@ function sendStatus(socket, room, status) {
 // Send status to self
 function sendStatusSelf(socket, status) {
   socket.emit('statusSelf', { status });
+}
+
+// Update typing status
+function updateTypingStatus(socket, roomId) {
+  const typingUsers = rooms[roomId].typing;
+  let message = '';
+  const currTypingCount = Object.keys(typingUsers).length;
+  switch (currTypingCount) {
+    case 0:
+      break;
+    case 1:
+      const username = Object.keys(typingUsers)[0];
+      message = `${username} is typing...`;
+      break;
+    default:
+      message = 'Several people are typing...';
+  }
+
+  socket.to(roomId).emit('typingStatus', { message });
 }
 
 // Generate room id
