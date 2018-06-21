@@ -186,6 +186,7 @@ const vue = new Vue({
       ];
       if (isSelf) {
         classes['is-self'] = true;
+      } else {
         messageList.unshift(`<div class="message-name-container">
             <span class="message-name">${username}</span>
           </div>`);
@@ -382,7 +383,6 @@ function joinChat(username, roomId, isHost) {
 }
 
 function leaveChat() {
-  socket.emit('leave', { username: vue.username, roomId: vue.roomId });
   $('#message-box').prop('disabled', true);
   chrome.runtime.sendMessage({ message: 'resetStorage' });
   socket.disconnect();
@@ -429,9 +429,6 @@ function commandHandler(data) {
         .then(showScrubber)
         .then(() => seek(factor));
       break;
-    case 'closeRoom':
-      leaveChat();
-      break;
     default:
       console.log(`Invalid command: ${command}`);
       return;
@@ -440,13 +437,14 @@ function commandHandler(data) {
 
 // Fire a play/pause action
 function ppAction(command) {
-  // TODO: Undefined player controls
-  const btn = document.querySelector('.PlayerControls--button-control-row').querySelector('button');
-  if (command === btn.getAttribute('aria-label').toLowerCase()) {
-    isReceivingAction = true;
-    btn.click();
-    isReceivingAction = false;
-  } else console.log('failed', command);
+  waitTillVisible('.PlayerControls--button-control-row', 1000).then(() => {
+    const btn = document.querySelector('.PlayerControls--button-control-row').querySelector('button');
+    if (command === btn.getAttribute('aria-label').toLowerCase()) {
+      isReceivingAction = true;
+      btn.click();
+      isReceivingAction = false;
+    } else console.log('failed', command);
+  });
 }
 
 // Add event listeners to control panel
@@ -456,12 +454,14 @@ function addButtonListeners() {
     const buttons = btnControl.querySelectorAll('button');
     const ppButton = buttons[0];
     const track = document.querySelector('.progress-control');
+    const exitBtn = document.querySelector('.button-bvuiExit');
 
     // Pause show on start
     ppAction('pause');
 
     ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label')));
     track.addEventListener('click', e => buttonHandler('seek', e));
+    exitBtn.addEventListener('click', leaveChat);
   }, () => console.log('Could not get buttons on time'));
 }
 

@@ -121,6 +121,7 @@ function createSession(username, iconTheme) {
   });
 }
 
+// TODO: If on netflix, leave current room and go to new room
 function joinSession(roomId, username, callback) {
   const { socket } = USER;
   socket.emit('roomCheck', { roomId, username }, showId => {
@@ -305,10 +306,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     addButtonListeners(tabs);
-  });
-
-  // Tabs listeners
-  chrome.tabs.onRemoved.addListener((tabId, info) => {
-
   });
 }, false);

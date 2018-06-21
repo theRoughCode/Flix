@@ -4,15 +4,15 @@ const io = require('socket.io')(http);
 
 const PORT = process.env.PORT || 3000;
 
-// TODO: messages from others dont send to you if you rejoin
-
+// TODO: host rooms on database to not lose data on startup
 const rooms = {
   '1': {
     showId: '70276688',
     theme: 'robohash',
     hostId: '1',
     isPlaying: true,
-    typing: {}
+    typing: {}, // Stores usernames of those currently typing
+    members: {}
   }
 };
 
@@ -33,7 +33,8 @@ io.on('connection', function(socket){
       theme,
       showId,
       hostId: socket.id,
-      typing: {}
+      typing: {},         // Stores usernames of those currently typing
+      members: {}         // Maps usernames to socket ids
     };
     res(id);
   });
@@ -44,7 +45,6 @@ io.on('connection', function(socket){
     else res(room.showId);
   });
 
-  // TODO: Set status of playback from host
   socket.on('join', function({ username, roomId, isHost }) {
     const room = rooms[roomId];
     if (room == null) {
@@ -53,6 +53,7 @@ io.on('connection', function(socket){
     }
     if (isHost) room.hostId = socket.id;  // set host id if host joined
     else socket.to(room.hostId).emit('queryPlayback', { responseSocketId: socket.id });
+    room.members[username] = socket.id;
 
     user.name = username;
     // If there is an existing socket
@@ -78,36 +79,32 @@ io.on('connection', function(socket){
     socket.to(roomId).emit('chatMessage', { username, gravatar, msg });
     socket.emit('userMessage', { gravatar, msg });
   });
-  // On leave room button click
-  socket.on('leave', function({ username, roomId }) {
-    socket.leave(roomId);
-    // TODO: Fix when host leaves
-    if (!rooms[roomId]) return;
-    // Host left
-    if (socket.id === rooms[roomId].hostId) {
-      sendStatus(socket, roomId, `${username} (the host) left the room.  This room will be closed.`);
-      sendStatusSelf(socket, 'You (the host) left the room. This room will be closed.');
-      socket.to(roomId).emit('command', { command: 'closeRoom' });
-      delete rooms[roomId];
-    } else {
-      sendStatus(socket, roomId, `${username} left the room.`);
-      sendStatusSelf(socket, 'You left the room.');
-    }
-  });
-  // On close tab.  Client socket has been disconnected completely.
+  // On close tab or leave room.
+  // Client socket has been disconnected from the room.
   socket.on('disconnect', function() {
-    if (!rooms.hasOwnProperty(user.roomId)) return;
-    // Host left
-    if (socket.id === rooms[user.roomId].hostId) {
-      sendStatus(socket, user.roomId, `${user.name} (the host) left the room.  This room will be closed.`);
-      socket.to(user.roomId).emit('command', { command: 'closeRoom' });
-      delete rooms[user.roomId];
-    } else {
-       // Remove user from room
-      delete rooms[user.roomId].typing[user.name];
-      updateTypingStatus(socket, user.roomId);
+    const room = rooms[user.roomId];
+    if (room == null) return;
 
-      sendStatus(socket, user.roomId, `${user.name} left the room.`);
+    delete rooms[user.roomId].typing[user.name];
+    delete rooms[user.roomId].members[user.name];
+    updateTypingStatus(socket, user.roomId);
+
+    const members = Object.keys(room.members);
+    // delete room if no more members left in the room
+    if (members.length === 0) {
+      // Not test room
+      if (roomId !== 1) delete rooms[user.roomId];
+      return
+    }
+
+    sendStatus(socket, user.roomId, `${user.name} left the room.`);
+
+    // Host left.  Change host.
+    if (socket.id === room.hostId) {
+      const nextHost = members[0];
+      room.hostId = room.members[nextHost];
+      sendStatus(socket, room.hostId, 'You are now the host of this room.');
+      sendStatus(socket, user.roomId, `${nextHost} is now the host of this room.`);
     }
   });
   socket.on('play', function({ username, roomId }) {
@@ -158,7 +155,7 @@ function sendStatusSelf(socket, status) {
   socket.emit('statusSelf', { status });
 }
 
-// Update typing status
+// Update typing status.  Called after modifying typing map.
 function updateTypingStatus(socket, roomId) {
   const typingUsers = rooms[roomId].typing;
   let message = '';
