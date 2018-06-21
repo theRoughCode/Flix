@@ -422,7 +422,6 @@ function commandHandler(data) {
       ppAction(command);
       break;
     case 'seek':
-    //TODO: Seeking to beginning sometimes
       const { factor } = data;
       isReceivingAction = true;
       showControls()

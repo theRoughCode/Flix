@@ -93,7 +93,7 @@ io.on('connection', function(socket){
     // delete room if no more members left in the room
     if (members.length === 0) {
       // Not test room
-      if (roomId !== 1) delete rooms[user.roomId];
+      if (user.roomId !== '1') delete rooms[user.roomId];
       return
     }
 

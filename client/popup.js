@@ -164,11 +164,13 @@ function setView(state) {
   switch (state) {
     case STATES.POST_CREATE:
       $('.choose-container').hide();
+      $('.form-container').hide();
       $('.room-form').show();
       $('.post-create-view').show();
       break;
     case STATES.POST_JOIN:
       $('.choose-container').hide();
+      $('.form-container').hide();
       $('.room-form').show();
       $('.post-join-view').show();
       break;
@@ -222,13 +224,10 @@ function addButtonListeners(tabs) {
     const iconTheme = $("#icons").val();
     setTabId(tabs[0].id); // Set tabId
     createSession(username, iconTheme);
-    $('.choose-container').hide();
-    $('.form-container').hide();
-    $('.room-form').show(100);
-    $('.post-create-view').show();
     toggleChat(true);
     $('#toggle-chat').prop('checked', true);
     setState(STATES.POST_CREATE);
+    setView(STATES.POST_CREATE);
   });
   joinRoomSubmitBtn.addEventListener('click', function() {
     const username = $("#username").val();
@@ -237,12 +236,14 @@ function addButtonListeners(tabs) {
     if (!room) return;
     setTabId(tabs[0].id); // Set tabId
     joinSession(room, username, valid => {
+      console.log(valid)
       if (!valid) {
         $('#invalid-room').show();
       } else {
         toggleChat(true);
         $('#toggle-chat').prop('checked', true);
         setState(STATES.POST_JOIN);
+        setView(STATES.POST_JOIN);
       }
     });
   });
