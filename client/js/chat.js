@@ -1,6 +1,7 @@
 emojione.imagePathPNG = chrome.extension.getURL("img/emojione-assets/png/32/");
 const DEV = false;
 const URL = (DEV) ? "http://localhost:3000" : "https://flix-chrome.herokuapp.com/";
+const playerControlsDivClass = '.PlayerControlsNeo__button-control-row';
 
 // ON LOAD
 const socket = io.connect(URL);
@@ -31,7 +32,7 @@ const vue = new Vue({
     // Set playback of video (for guests)
     socket.on('setPlayback', function({ factor, isPlaying }) {
       const ppCommand = (isPlaying) ? 'play' : 'pause';
-      waitTillVisible('.PlayerControls--button-control-row', 20000).then(() => {
+      waitTillVisible(playerControlsDivClass, 20000).then(() => {
          // play/pause
         ppAction(ppCommand);
         // seek to playback position
@@ -80,7 +81,7 @@ const vue = new Vue({
 
     // Handle timestamp querying (only for hosts)
     socket.on('queryPlayback', ({ responseSocketId }) => {
-      waitTillVisible('.PlayerControls--button-control-row', 100000).then(() => {
+      waitTillVisible(playerControlsDivClass, 100000).then(() => {
         showControls()
           .then(() => {
             const track = document.querySelector('.progress-control');
@@ -414,6 +415,8 @@ function buttonHandler(type, e) {
 }
 
 // Receives incoming controls from room broadcasts
+// TODO: Jump to beginning
+// TODO: Pause not working sometimes
 function commandHandler(data) {
   const { command } = data;
   switch (command) {
@@ -436,8 +439,8 @@ function commandHandler(data) {
 
 // Fire a play/pause action
 function ppAction(command) {
-  waitTillVisible('.PlayerControls--button-control-row', 1000).then(() => {
-    const btn = document.querySelector('.PlayerControls--button-control-row').querySelector('button');
+  waitTillVisible(playerControlsDivClass, 1000).then(() => {
+    const btn = document.querySelector(playerControlsDivClass).querySelector('button');
     if (command === btn.getAttribute('aria-label').toLowerCase()) {
       isReceivingAction = true;
       btn.click();
@@ -448,17 +451,19 @@ function ppAction(command) {
 
 // Add event listeners to control panel
 function addButtonListeners() {
-  waitTillVisible('.PlayerControls--button-control-row', 100000).then(() => {
-    const btnControl = document.querySelector('.PlayerControls--button-control-row');
+  waitTillVisible(playerControlsDivClass, 100000).then(() => {
+    const btnControl = document.querySelector(playerControlsDivClass);
     const buttons = btnControl.querySelectorAll('button');
     const ppButton = buttons[0];
+    const centreHitZone = document.querySelector('.controls-full-hit-zone').querySelector('div');
     const track = document.querySelector('.progress-control');
-    const exitBtn = document.querySelector('.button-bvuiExit');
+    const exitBtn = document.querySelector('.top-left-controls').querySelector('button');
 
     // Pause show on start
     ppAction('pause');
 
     ppButton.addEventListener('click', e => buttonHandler(e.target.getAttribute('aria-label')));
+    centreHitZone.addEventListener('click', _ => buttonHandler(ppButton.getAttribute('aria-label')));
     track.addEventListener('click', e => buttonHandler('seek', e));
     exitBtn.addEventListener('click', leaveChat);
   }, () => console.log('Could not get buttons on time'));

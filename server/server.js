@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 // TODO: host rooms on database to not lose data on startup
 const rooms = {
   '1': {
-    showId: '70276688',
+    showId: '70116062',
     theme: 'robohash',
     hostId: '1',
     isPlaying: true,
@@ -147,11 +147,13 @@ http.listen(PORT, function(){
 
 // Broadcast status to room
 function sendStatus(socket, room, status) {
+  console.log(room, status)
   socket.to(room).emit('status', { status });
 }
 
 // Send status to self
 function sendStatusSelf(socket, status) {
+  console.log('self', status)
   socket.emit('statusSelf', { status });
 }
 

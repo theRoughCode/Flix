@@ -1,4 +1,5 @@
 // Open netflix on join request
+// TODO: Check if current show is open, and dont refresh, just open tab.
 function openRoom(showId) {
   chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
     const tab = tabs.find((elem) => elem.url.startsWith('https://www.netflix.com/watch/'));
